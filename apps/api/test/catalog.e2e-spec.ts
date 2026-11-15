@@ -182,6 +182,16 @@ describe('Catalog, inventory and AI (e2e)', () => {
         .expect(415);
     });
 
+    it('allows at most 3 photos per garment', async () => {
+      const { a } = await newStore('tresfotos');
+      const draft = randomUUID();
+      for (let i = 0; i < 3; i++) await upload(a, draft).expect(201);
+      const res = await upload(a, draft).expect(400);
+      expect(res.body.code).toBe('TOO_MANY_IMAGES');
+      const many = await a.patch(`/products/${randomUUID()}`).send({ images: { imageIds: Array.from({ length: 4 }, () => randomUUID()) } });
+      expect(many.status).toBe(400);
+    });
+
     it('deletes a pending photo from storage', async () => {
       const { a } = await newStore('borrar');
       const res = await upload(a, randomUUID()).expect(201);
@@ -557,10 +567,10 @@ describe('Catalog, inventory and AI (e2e)', () => {
       await createProduct(a).expect(201);
     });
 
-    it('validates the request (1 to 4 photos, idempotency key)', async () => {
+    it('validates the request (1 to 3 photos, idempotency key)', async () => {
       const { a } = await newStore('iavalida');
       await a.post('/ai/analyze-garment').send({ imageIds: [], idempotencyKey: idem() }).expect(400);
-      await a.post('/ai/analyze-garment').send({ imageIds: Array.from({ length: 5 }, () => randomUUID()), idempotencyKey: idem() }).expect(400);
+      await a.post('/ai/analyze-garment').send({ imageIds: Array.from({ length: 4 }, () => randomUUID()), idempotencyKey: idem() }).expect(400);
       await a.post('/ai/analyze-garment').send({ imageIds: [randomUUID()] }).expect(400);
     });
   });

@@ -11,7 +11,7 @@ import { EntitlementsService } from '../subscriptions/entitlements.service.js';
 import { GarmentRecognizer, RecognitionError } from './garment-recognizer.js';
 import { type SuggestionView, toSuggestionView } from './suggestion.js';
 
-export const MAX_IMAGES_PER_ANALYSIS = 4;
+export const MAX_IMAGES_PER_ANALYSIS = 3;
 
 export interface AnalysisView {
   id: string;

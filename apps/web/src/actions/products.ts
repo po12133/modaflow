@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { MAX_PHOTOS } from "@/config/products";
 import { api, ApiError } from "@/lib/api";
 import type { AiAnalysis, Category, Movement, ProductDetail } from "@/lib/types";
 
@@ -79,7 +80,7 @@ const productSchema = z.object({
     .pipe(z.union([z.literal(""), z.string().regex(/^[A-Z0-9][A-Z0-9._-]{1,47}$/, { error: "Solo letras, números, puntos y guiones." })]))
     .transform((v) => v || undefined),
   lowStockThreshold: z.number().int().min(0).max(10_000),
-  imageIds: z.array(z.string().uuid()).max(6, { error: "Hasta 6 fotos por prenda." }),
+  imageIds: z.array(z.string().uuid()).max(MAX_PHOTOS, { error: `Hasta ${MAX_PHOTOS} fotos por prenda.` }),
   primaryImageId: z.string().uuid().optional(),
   aiAnalysisId: z.string().uuid().optional(),
 });
@@ -165,7 +166,7 @@ export async function deletePendingImageAction(id: string): Promise<ActionResult
 // ---------------------------------------------------------------------------
 
 const analyzeSchema = z.object({
-  imageIds: z.array(z.string().uuid()).min(1, { error: "Sube al menos una foto." }).max(4, { error: "Analiza hasta 4 fotos." }),
+  imageIds: z.array(z.string().uuid()).min(1, { error: "Sube al menos una foto." }).max(MAX_PHOTOS, { error: `Analiza hasta ${MAX_PHOTOS} fotos.` }),
   idempotencyKey: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
 });
 

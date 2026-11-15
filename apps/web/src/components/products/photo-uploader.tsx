@@ -3,10 +3,10 @@
 import { ArrowLeft, ArrowRight, Camera, ImagePlus, LoaderCircle, Star, TriangleAlert, X } from "lucide-react";
 import { useRef } from "react";
 import { deletePendingImageAction } from "@/actions/products";
+import { MAX_PHOTOS } from "@/config/products";
 import type { ProductImage } from "@/lib/types";
 import { cn } from "@modaflow/ui/lib/utils";
 
-export const MAX_PHOTOS = 6;
 const ACCEPTED = /^image\/(jpeg|png|webp)$/;
 const MAX_INPUT_BYTES = 25 * 1024 * 1024;
 

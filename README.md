@@ -147,7 +147,7 @@ La API valida sus variables al arrancar ([env.validation.ts](apps/api/src/config
 - Las fotos subidas que nunca se guardan con un producto se eliminan a las 24 h.
 
 **IA (Claude)**
-- `POST /ai/analyze-garment` (1 a 4 fotos) envía las fotos optimizadas a Claude, con salida estructurada validada
+- `POST /ai/analyze-garment` (1 a 3 fotos) envía las fotos optimizadas a Claude, con salida estructurada validada
   con zod. El esquema **no tiene campos** de precio, cantidad, marca ni composición, y la talla solo se informa si
   se lee en una etiqueta. Las sugerencias se sanean y quedan editables. La clave nunca sale del backend.
 - Modelo configurable con `ANTHROPIC_MODEL` (por defecto `claude-opus-5-5`, esfuerzo `low`). Usa el *fallback*

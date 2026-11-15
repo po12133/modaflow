@@ -17,6 +17,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Trim, TrimToNull } from '../common/validation.js';
+import { MAX_IMAGES_PER_PRODUCT } from '../images/image-processing.js';
 
 /** Money as a decimal string with up to 2 decimals ("69", "69.5", "69.50"). Never floats. */
 const MONEY = /^\d{1,9}(\.\d{1,2})?$/;
@@ -166,7 +167,7 @@ export class CreateProductDto extends ProductFieldsDto {
   @ApiPropertyOptional({ type: [String], description: 'Fotos subidas para este producto, en orden' })
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(6)
+  @ArrayMaxSize(MAX_IMAGES_PER_PRODUCT, { message: `Cada prenda puede tener hasta ${MAX_IMAGES_PER_PRODUCT} fotos.` })
   @IsUUID('4', { each: true })
   imageIds?: string[];
 
@@ -210,7 +211,7 @@ class VariantUpdateDto {
 class ImagesUpdateDto {
   @ApiProperty({ type: [String], description: 'Fotos finales en orden; las que falten se eliminan' })
   @IsArray()
-  @ArrayMaxSize(6)
+  @ArrayMaxSize(MAX_IMAGES_PER_PRODUCT, { message: `Cada prenda puede tener hasta ${MAX_IMAGES_PER_PRODUCT} fotos.` })
   @IsUUID('4', { each: true })
   imageIds!: string[];
 

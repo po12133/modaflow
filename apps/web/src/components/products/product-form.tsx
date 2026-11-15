@@ -19,6 +19,7 @@ import { formatDate } from "@modaflow/ui/lib/format";
 import type { AiUsage, Category, GarmentSuggestion, ProductDetail } from "@/lib/types";
 import { cn } from "@modaflow/ui/lib/utils";
 import { type Photo, PhotoUploader, photosFromImages } from "./photo-uploader";
+import { MAX_PHOTOS } from "@/config/products";
 import { TagInput } from "./tag-input";
 import { newRow, VariantEditor, type VariantMode, type VariantRow } from "./variant-editor";
 
@@ -109,7 +110,7 @@ export function ProductForm({ mode, product, categories, aiUsage, productLimit, 
   }
 
   function analyze() {
-    const imageIds = readyPhotos.slice(0, 4).map((p) => p.id!);
+    const imageIds = readyPhotos.slice(0, MAX_PHOTOS).map((p) => p.id!);
     // Same set of photos -> same key: retries never charge twice.
     const setKey = imageIds.join(",");
     let idempotencyKey = analysisKeys.current.get(setKey);

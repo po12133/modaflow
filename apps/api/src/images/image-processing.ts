@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { AppError } from '../common/app-error.js';
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-export const MAX_IMAGES_PER_PRODUCT = 6;
+export const MAX_IMAGES_PER_PRODUCT = 3;
 /** Formats accepted after decoding the real file content (not the client's MIME type). */
 const ALLOWED_FORMATS = new Set(['jpeg', 'png', 'webp']);
 /** Refuse decompression bombs: ~50 megapixels. */
