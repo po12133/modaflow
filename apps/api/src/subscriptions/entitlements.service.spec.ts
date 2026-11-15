@@ -38,7 +38,7 @@ describe('EntitlementsService', () => {
     expect(ent.features.onlineCatalog).toBe(true);
   });
 
-  it('treats an elapsed trial as expired, persists it and sets the retention date', async () => {
+  it('treats an elapsed trial as expired from its dates (the expiry job persists it) and sets the retention date', async () => {
     const { service, prisma } = makeService('gratis');
     const ent = await service.getForTenant('t1', addDays(start, 15));
     expect(ent.status).toBe('EXPIRED');
@@ -46,10 +46,7 @@ describe('EntitlementsService', () => {
     expect(ent.daysRemaining).toBe(0);
     expect(ent.dataRetentionUntil?.toISOString()).toBe(addDays(start, 44).toISOString());
     expect(ent.features.onlineCatalog).toBe(false);
-    expect(prisma.subscription.updateMany).toHaveBeenCalledWith({
-      where: { id: 'sub-1', status: 'TRIALING' },
-      data: { status: 'EXPIRED' },
-    });
+    expect(prisma.subscription.updateMany).not.toHaveBeenCalled();
   });
 
   it('blocks new operations when the subscription is not active', async () => {

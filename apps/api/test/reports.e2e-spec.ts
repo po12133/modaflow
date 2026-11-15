@@ -83,7 +83,7 @@ describe('Reports (e2e)', () => {
 
   async function setPlan(tenantId: string, code: string) {
     const plan = await prisma.plan.findUniqueOrThrow({ where: { code } });
-    await prisma.subscription.update({ where: { tenantId }, data: { planId: plan.id, status: 'ACTIVE' } });
+    await prisma.subscription.update({ where: { tenantId }, data: { planId: plan.id, planVersionId: (await prisma.planVersion.findFirstOrThrow({ where: { planId: plan.id }, orderBy: { version: 'desc' } })).id, status: 'ACTIVE' } });
   }
 
   beforeAll(async () => {

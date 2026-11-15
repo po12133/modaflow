@@ -6,7 +6,7 @@ import { SalesReportFilters } from "@/components/reports/sales/sales-report-filt
 import { SalesReportKpis } from "@/components/reports/sales/sales-report-kpis";
 import { SalesReportTable } from "@/components/reports/sales/sales-report-table";
 import { NoReportAccess } from "@/components/reports/ui/no-report-access";
-import { Panel } from "@/components/reports/ui/panel";
+import { Panel } from "@/components/common/panel";
 import { ReportShell } from "@/components/reports/ui/report-shell";
 import { getDashboardContext } from "@/lib/dal";
 import { periodParams } from "@/lib/reports";

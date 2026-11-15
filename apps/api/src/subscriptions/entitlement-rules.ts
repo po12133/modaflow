@@ -32,7 +32,7 @@ export interface SubscriptionState {
 
 /** Status taking time into account: an elapsed period is EXPIRED even if not yet persisted. */
 export function effectiveStatus(sub: SubscriptionState, now: Date): SubscriptionStatus {
-  if (sub.status === 'CANCELED' || sub.status === 'EXPIRED') return sub.status;
+  if (sub.status === 'CANCELED' || sub.status === 'EXPIRED' || sub.status === 'SUSPENDED') return sub.status;
   return now.getTime() >= sub.currentPeriodEnd.getTime() ? 'EXPIRED' : sub.status;
 }
 
@@ -122,4 +122,8 @@ export function addMonths(date: Date, months: number): Date {
       date.getUTCMilliseconds(),
     ),
   );
+}
+
+export function contractedRules<T extends PlanRules>(sub: { plan: T; planVersion: PlanRules | null }): PlanRules {
+  return sub.planVersion ?? sub.plan;
 }

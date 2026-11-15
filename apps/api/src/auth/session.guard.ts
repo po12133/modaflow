@@ -26,7 +26,7 @@ export class SessionGuard implements CanActivate {
     const token: unknown = req.cookies?.[SESSION_COOKIE];
     const session = typeof token === 'string' && token.length > 0 ? await this.sessions.validate(token) : null;
     if (session) {
-      req.auth = { userId: session.userId, sessionId: session.id, activeTenantId: session.activeTenantId };
+      req.auth = { userId: session.userId, sessionId: session.id, activeTenantId: session.activeTenantId, globalRole: session.globalRole };
     }
 
     if (isPublic || session) return true;

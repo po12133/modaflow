@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { AppError } from '../common/app-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { effectiveStatus, isFeatureEnabled } from '../subscriptions/entitlement-rules.js';
+import { contractedRules, effectiveStatus, isFeatureEnabled } from '../subscriptions/entitlement-rules.js';
 import { EntitlementsService } from '../subscriptions/entitlements.service.js';
 
 export interface PublicStoreContext {
@@ -29,9 +29,9 @@ export class StorefrontAccessService {
   ) {}
 
   async isOnline(tenantId: string, now = new Date()): Promise<boolean> {
-    const sub = await this.prisma.subscription.findUnique({ where: { tenantId }, include: { plan: true } });
+    const sub = await this.prisma.subscription.findUnique({ where: { tenantId }, include: { plan: true, planVersion: true } });
     if (!sub) return false;
-    return isFeatureEnabled(sub.plan, effectiveStatus(sub, now), 'onlineCatalog');
+    return isFeatureEnabled(contractedRules(sub), effectiveStatus(sub, now), 'onlineCatalog');
   }
 
   async assertManage(tenantId: string): Promise<void> {

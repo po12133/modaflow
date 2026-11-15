@@ -3,44 +3,59 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { apiFailure, zodFailure } from "@/lib/action-errors";
 import { api, ApiError } from "@/lib/api";
-import type { FormState } from "@/lib/types";
-import { formValues } from "@/lib/validation";
+import type { ActionResult } from "@/types/actions";
+import type { PaymentRequest } from "@/types/billing";
 
-const requestSchema = z.object({
-  planCode: z.string().regex(/^[a-z0-9_-]{2,32}$/, { error: "Elige un plan." }),
-  note: z
-    .string()
-    .trim()
-    .max(500, { error: "La nota no puede superar 500 caracteres." })
-    .transform((v) => (v === "" ? null : v)),
-});
+const uuid = z.string().uuid();
 
-/** Requests a plan change. It stays pending: paid plans are activated by ModaFlow, not by the user. */
-export async function requestPlanChangeAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const values = formValues(formData);
-  const parsed = requestSchema.safeParse({ note: "", ...Object.fromEntries(formData) });
-  if (!parsed.success) return zodFailure(parsed.error, values);
-
-  try {
-    await api("/subscription/change-requests", { method: "POST", body: parsed.data });
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) redirect("/login");
-    return apiFailure(error, values);
+function fail(error: unknown): ActionResult<never> {
+  if (error instanceof ApiError) {
+    if (error.status === 401) redirect("/login");
+    return { ok: false, code: error.code, message: error.message || "Ocurrió un error inesperado." };
   }
-  refresh();
-  return { ok: true, message: "Solicitud enviada. Te contactaremos para coordinar el pago y activar tu plan." };
+  return { ok: false, message: "No pudimos conectar con el servidor. Intenta de nuevo." };
 }
 
-export async function cancelPlanChangeAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "");
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+export async function createPaymentRequestAction(planCode: string, method: "QR" | "TRANSFER"): Promise<ActionResult<{ id: string }>> {
+  const parsed = z.object({ planCode: z.string().regex(/^[a-z0-9_-]{2,32}$/), method: z.enum(["QR", "TRANSFER"]) }).safeParse({ planCode, method });
+  if (!parsed.success) return { ok: false, message: "Elige un plan y un método de pago." };
   try {
-    await api(`/subscription/change-requests/${id}`, { method: "DELETE" });
+    const req = await api<PaymentRequest>("/subscription/payment-requests", { method: "POST", body: parsed.data });
+    return { ok: true, data: { id: req.id } };
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) redirect("/login");
-    if (!(error instanceof ApiError && error.code === "REQUEST_NOT_FOUND")) throw error;
+    return fail(error);
+  }
+}
+
+export async function submitPaymentAction(id: string): Promise<ActionResult<null>> {
+  if (!uuid.safeParse(id).success) return { ok: false, message: "Solicitud no válida." };
+  try {
+    await api(`/subscription/payment-requests/${id}/submit`, { method: "POST" });
+  } catch (error) {
+    return fail(error);
+  }
+  refresh();
+  return { ok: true, data: null };
+}
+
+export async function cancelPaymentAction(id: string): Promise<ActionResult<null>> {
+  if (!uuid.safeParse(id).success) return { ok: false, message: "Solicitud no válida." };
+  try {
+    await api(`/subscription/payment-requests/${id}/cancel`, { method: "POST" });
+  } catch (error) {
+    return fail(error);
+  }
+  refresh();
+  return { ok: true, data: null };
+}
+
+export async function markNotificationReadAction(id: string): Promise<void> {
+  if (id !== "all" && !uuid.safeParse(id).success) return;
+  try {
+    await api(id === "all" ? "/notifications/read-all" : `/notifications/${id}/read`, { method: "POST" });
+  } catch {
+    return;
   }
   refresh();
 }

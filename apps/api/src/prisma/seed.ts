@@ -1,7 +1,8 @@
 /**
- * Prisma seed: loads the plan catalog into the `plans` table (idempotent
- * upsert by `code`). Plans no longer in the catalog are deactivated, never
- * deleted, so existing subscriptions keep their references.
+ * Prisma seed: creates the initial plan catalog (with its version 1) and the
+ * platform settings row when they are missing. Existing plans are never
+ * updated: once created, prices and limits are managed from /admin/planes and
+ * PostgreSQL is the only source of truth.
  *
  *   Development: npm run prisma:seed -w @modaflow/api      (tsx src/prisma/seed.ts)
  *   Production:  node dist/prisma/seed.js                  (runs on container start)
@@ -16,15 +17,35 @@ async function main() {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
   try {
+    let created = 0;
     for (const plan of PLAN_CATALOG) {
-      const data = { ...plan, isActive: true };
-      await prisma.plan.upsert({ where: { code: plan.code }, create: data, update: data });
+      const exists = await prisma.plan.findUnique({ where: { code: plan.code }, select: { id: true } });
+      if (exists) continue;
+      const row = await prisma.plan.create({ data: { ...plan, isActive: true } });
+      await prisma.planVersion.create({
+        data: {
+          planId: row.id,
+          version: 1,
+          name: row.name,
+          priceCents: row.priceCents,
+          billingPeriod: row.billingPeriod,
+          durationDays: row.durationDays,
+          maxProducts: row.maxProducts,
+          aiAnalysesLimit: row.aiAnalysesLimit,
+          aiAnalysesPeriod: row.aiAnalysesPeriod,
+          maxUsers: row.maxUsers,
+          maxBranches: row.maxBranches,
+          inventoryAndSales: row.inventoryAndSales,
+          advancedReports: row.advancedReports,
+          onlineCatalog: row.onlineCatalog,
+          advancedManagement: row.advancedManagement,
+          isTrial: row.isTrial,
+        },
+      });
+      created++;
     }
-    const { count } = await prisma.plan.updateMany({
-      where: { code: { notIn: PLAN_CATALOG.map((p) => p.code) }, isActive: true },
-      data: { isActive: false },
-    });
-    console.log(`[seed] ${PLAN_CATALOG.length} plans upserted${count ? `, ${count} deactivated` : ''}.`);
+    await prisma.platformSettings.upsert({ where: { id: 1 }, create: { id: 1, notificationEmails: [] }, update: {} });
+    console.log(`[seed] ${created} plans created; existing plans left untouched.`);
   } finally {
     await prisma.$disconnect();
   }

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { effectiveStatus, isFeatureEnabled } from '../subscriptions/entitlement-rules.js';
+import { contractedRules, effectiveStatus, isFeatureEnabled } from '../subscriptions/entitlement-rules.js';
 import { CatalogSettingsService } from './catalog-settings.service.js';
 import { StorefrontAccessService } from './storefront-access.service.js';
 
@@ -35,11 +35,11 @@ export class PublicStoreService {
     const now = new Date();
     const stores = await this.prisma.store.findMany({
       where: { OR: [{ catalogSettings: null }, { catalogSettings: { status: 'PUBLISHED' } }] },
-      select: { tenantId: true, slug: true, updatedAt: true, tenant: { select: { subscription: { include: { plan: true } } } } },
+      select: { tenantId: true, slug: true, updatedAt: true, tenant: { select: { subscription: { include: { plan: true, planVersion: true } } } } },
     });
     const online = stores.filter((s) => {
       const sub = s.tenant.subscription;
-      return sub ? isFeatureEnabled(sub.plan, effectiveStatus(sub, now), 'onlineCatalog') : false;
+      return sub ? isFeatureEnabled(contractedRules(sub), effectiveStatus(sub, now), 'onlineCatalog') : false;
     });
     const products = await this.prisma.product.findMany({
       where: { tenantId: { in: online.map((s) => s.tenantId) }, status: 'ACTIVE', catalogPublished: true },

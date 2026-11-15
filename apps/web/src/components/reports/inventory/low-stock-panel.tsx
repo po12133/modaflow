@@ -3,7 +3,7 @@ import { LOW_STOCK_OPTIONS } from "@/config/reports";
 import { plural } from "@/lib/format";
 import type { InventoryReport } from "@/types/reports";
 import { UrlSelect, UrlToggle } from "../controls/url-fields";
-import { Panel } from "../ui/panel";
+import { Panel } from "@/components/common/panel";
 
 interface LowStockPanelProps {
   lowStock: InventoryReport["lowStock"];

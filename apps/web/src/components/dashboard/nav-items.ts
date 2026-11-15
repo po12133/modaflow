@@ -1,4 +1,4 @@
-import { ChartLine, CreditCard, Globe, House, Menu, Package, ReceiptText, Settings, ShoppingCart, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, ChartLine, CreditCard, Globe, House, Menu, Package, ReceiptText, Settings, ShoppingCart, UserRound, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -24,6 +24,7 @@ export const MAIN_NAV: NavItem[] = [
 
 export const ACCOUNT_NAV: NavItem[] = [
   { href: "/dashboard/suscripcion", label: "Suscripción", icon: CreditCard },
+  { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
   { href: "/dashboard/cuenta", label: "Mi cuenta", icon: UserRound },
 ];

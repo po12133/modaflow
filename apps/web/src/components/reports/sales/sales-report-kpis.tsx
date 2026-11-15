@@ -1,6 +1,6 @@
 import { formatMoney } from "@/lib/format";
 import type { Kpis } from "@/types/reports";
-import { KpiCard } from "../ui/kpi-card";
+import { KpiCard } from "@/components/common/kpi-card";
 
 export function SalesReportKpis({ kpis }: { kpis: Kpis }) {
   return (

@@ -40,6 +40,7 @@ export const STATUS_LABELS = {
   ACTIVE: "Activa",
   EXPIRED: "Vencida",
   CANCELED: "Cancelada",
+  SUSPENDED: "Suspendida",
 } as const;
 
 export const ROLE_LABELS = {

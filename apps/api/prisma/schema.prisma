@@ -19,17 +19,21 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
-  id                  String    @id @default(uuid()) @db.Uuid
-  name                String    @db.VarChar(120)
+  id                  String      @id @default(uuid()) @db.Uuid
+  name                String      @db.VarChar(120)
   /// Always stored lowercased and trimmed.
-  email               String    @unique @db.VarChar(254)
-  passwordHash        String    @map("password_hash")
+  email               String      @unique @db.VarChar(254)
+  passwordHash        String      @map("password_hash")
   /// Consecutive failed logins; reset on success. Drives temporary lockout.
-  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(3)
-  lastLoginAt         DateTime? @map("last_login_at") @db.Timestamptz(3)
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  failedLoginAttempts Int         @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?   @map("locked_until") @db.Timestamptz(3)
+  lastLoginAt         DateTime?   @map("last_login_at") @db.Timestamptz(3)
+  globalRole          GlobalRole? @map("global_role")
+  status              UserStatus  @default(ACTIVE)
+  suspendedAt         DateTime?   @map("suspended_at") @db.Timestamptz(3)
+  suspendedReason     String?     @map("suspended_reason") @db.VarChar(300)
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   memberships         TenantMembership[]
   sessions            Session[]
@@ -40,8 +44,13 @@ model User {
   inventoryMovements  InventoryMovement[]
   productImages       ProductImage[]
   aiAnalyses          AiAnalysis[]
-  sales               Sale[]               @relation("SaleSeller")
-  saleCancellations   SaleCancellation[]   @relation("SaleCanceler")
+  sales               Sale[]                @relation("SaleSeller")
+  reviewedPayments    PlanChangeRequest[]   @relation("PaymentReviewer")
+  auditLogs           AdminAuditLog[]
+  subscriptionHistory SubscriptionHistory[]
+  subscriptionPeriods SubscriptionPeriod[]
+  planVersions        PlanVersion[]
+  saleCancellations   SaleCancellation[]    @relation("SaleCanceler")
 
   @@map("users")
 }
@@ -121,6 +130,9 @@ model Tenant {
   catalogSettings     CatalogSettings[]
   catalogRequests     CatalogOrderRequest[]
   catalogRequestItems CatalogOrderRequestItem[]
+  subscriptionPeriods SubscriptionPeriod[]
+  subscriptionHistory SubscriptionHistory[]
+  notifications       Notification[]
 
   @@map("tenants")
 }
@@ -228,8 +240,10 @@ model Plan {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   subscriptions      Subscription[]
-  changeRequestsFrom PlanChangeRequest[] @relation("ChangeFromPlan")
-  changeRequestsTo   PlanChangeRequest[] @relation("ChangeToPlan")
+  versions           PlanVersion[]
+  periods            SubscriptionPeriod[]
+  changeRequestsFrom PlanChangeRequest[]  @relation("ChangeFromPlan")
+  changeRequestsTo   PlanChangeRequest[]  @relation("ChangeToPlan")
 
   @@map("plans")
 }
@@ -239,24 +253,31 @@ enum SubscriptionStatus {
   ACTIVE
   EXPIRED
   CANCELED
+  SUSPENDED
 }
 
 /// Current subscription of a tenant (one per tenant). The effective status is
 /// also derived from `currentPeriodEnd`, so an elapsed trial counts as expired
 /// even before a job updates `status`.
 model Subscription {
-  id               String             @id @default(uuid()) @db.Uuid
-  tenantId         String             @unique @map("tenant_id") @db.Uuid
-  planId           String             @map("plan_id") @db.Uuid
+  id               String              @id @default(uuid()) @db.Uuid
+  tenantId         String              @unique @map("tenant_id") @db.Uuid
+  planId           String              @map("plan_id") @db.Uuid
   status           SubscriptionStatus
-  startedAt        DateTime           @map("started_at") @db.Timestamptz(3)
-  currentPeriodEnd DateTime           @map("current_period_end") @db.Timestamptz(3)
-  canceledAt       DateTime?          @map("canceled_at") @db.Timestamptz(3)
-  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  startedAt        DateTime            @map("started_at") @db.Timestamptz(3)
+  currentPeriodEnd DateTime            @map("current_period_end") @db.Timestamptz(3)
+  canceledAt       DateTime?           @map("canceled_at") @db.Timestamptz(3)
+  planVersionId    String?             @map("plan_version_id") @db.Uuid
+  suspendedAt      DateTime?           @map("suspended_at") @db.Timestamptz(3)
+  suspendedFrom    SubscriptionStatus? @map("suspended_from")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan        Plan                  @relation(fields: [planId], references: [id], onDelete: Restrict)
+  planVersion PlanVersion?          @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  periods     SubscriptionPeriod[]
+  history     SubscriptionHistory[]
 
   @@index([planId])
   @@index([status, currentPeriodEnd])
@@ -310,22 +331,37 @@ enum PlanChangeRequestStatus {
 /// Request from a tenant to switch plans. Approval (and payment) is handled
 /// later by ModaFlow staff; tenants can never activate a paid plan themselves.
 model PlanChangeRequest {
-  id            String                  @id @default(uuid()) @db.Uuid
-  tenantId      String                  @map("tenant_id") @db.Uuid
-  requestedById String                  @map("requested_by_id") @db.Uuid
-  fromPlanId    String                  @map("from_plan_id") @db.Uuid
-  toPlanId      String                  @map("to_plan_id") @db.Uuid
-  status        PlanChangeRequestStatus @default(PENDING)
-  note          String?                 @db.VarChar(500)
-  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                String                  @id @default(uuid()) @db.Uuid
+  tenantId          String                  @map("tenant_id") @db.Uuid
+  requestedById     String                  @map("requested_by_id") @db.Uuid
+  fromPlanId        String                  @map("from_plan_id") @db.Uuid
+  toPlanId          String                  @map("to_plan_id") @db.Uuid
+  status            PlanChangeRequestStatus @default(PENDING)
+  note              String?                 @db.VarChar(500)
+  planVersionId     String?                 @map("plan_version_id") @db.Uuid
+  amountExpected    Decimal?                @map("amount_expected") @db.Decimal(12, 2)
+  method            PlatformPaymentMethod?
+  receiptKey        String?                 @map("receipt_key") @db.VarChar(300)
+  receiptUploadedAt DateTime?               @map("receipt_uploaded_at") @db.Timestamptz(3)
+  submittedAt       DateTime?               @map("submitted_at") @db.Timestamptz(3)
+  reviewedById      String?                 @map("reviewed_by_id") @db.Uuid
+  reviewedAt        DateTime?               @map("reviewed_at") @db.Timestamptz(3)
+  reviewNote        String?                 @map("review_note") @db.VarChar(500)
+  amountConfirmed   Decimal?                @map("amount_confirmed") @db.Decimal(12, 2)
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  requestedBy User   @relation(fields: [requestedById], references: [id], onDelete: Restrict)
-  fromPlan    Plan   @relation("ChangeFromPlan", fields: [fromPlanId], references: [id], onDelete: Restrict)
-  toPlan      Plan   @relation("ChangeToPlan", fields: [toPlanId], references: [id], onDelete: Restrict)
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestedBy User                @relation(fields: [requestedById], references: [id], onDelete: Restrict)
+  fromPlan    Plan                @relation("ChangeFromPlan", fields: [fromPlanId], references: [id], onDelete: Restrict)
+  toPlan      Plan                @relation("ChangeToPlan", fields: [toPlanId], references: [id], onDelete: Restrict)
+  planVersion PlanVersion?        @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  reviewedBy  User?               @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  period      SubscriptionPeriod?
 
   @@index([tenantId, status])
+  @@index([status, createdAt])
+  @@index([reviewedAt])
   @@map("plan_change_requests")
 }
 
@@ -809,4 +845,222 @@ model CatalogOrderRequestItem {
   @@index([requestId])
   @@index([tenantId, productId])
   @@map("catalog_order_request_items")
+}
+
+// ---------------------------------------------------------------------------
+// Stage 6: SaaS administration, billing and notifications
+// ---------------------------------------------------------------------------
+
+enum GlobalRole {
+  SUPERADMIN
+  SUPPORT
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PlatformPaymentMethod {
+  QR
+  TRANSFER
+}
+
+enum PeriodKind {
+  TRIAL
+  ACTIVATION
+  RENEWAL
+  PLAN_CHANGE
+  EXTENSION
+}
+
+enum SubscriptionAction {
+  TRIAL_STARTED
+  TRIAL_EXTENDED
+  ACTIVATED
+  RENEWED
+  PLAN_CHANGED
+  SUSPENDED
+  REACTIVATED
+  CANCELED
+  EXPIRED
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+}
+
+enum NotificationAudience {
+  TENANT
+  ADMIN
+}
+
+enum NotificationType {
+  TRIAL_ENDING
+  TRIAL_EXPIRED
+  PAYMENT_SUBMITTED
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+  SUBSCRIPTION_ACTIVATED
+  SUBSCRIPTION_ENDING
+  SUBSCRIPTION_EXPIRED
+}
+
+enum EmailStatus {
+  NOT_APPLICABLE
+  PENDING
+  SENT
+  SKIPPED
+  FAILED
+}
+
+model PlanVersion {
+  id                 String        @id @default(uuid()) @db.Uuid
+  planId             String        @map("plan_id") @db.Uuid
+  version            Int
+  name               String        @db.VarChar(60)
+  priceCents         Int           @map("price_cents")
+  billingPeriod      BillingPeriod @map("billing_period")
+  durationDays       Int?          @map("duration_days")
+  maxProducts        Int           @map("max_products")
+  aiAnalysesLimit    Int           @map("ai_analyses_limit")
+  aiAnalysesPeriod   UsagePeriod   @map("ai_analyses_period")
+  maxUsers           Int           @map("max_users")
+  maxBranches        Int           @map("max_branches")
+  inventoryAndSales  Boolean       @map("inventory_and_sales")
+  advancedReports    Boolean       @map("advanced_reports")
+  onlineCatalog      CatalogAccess @map("online_catalog")
+  advancedManagement Boolean       @map("advanced_management")
+  isTrial            Boolean       @map("is_trial")
+  createdById        String?       @map("created_by_id") @db.Uuid
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  plan          Plan                 @relation(fields: [planId], references: [id], onDelete: Restrict)
+  createdBy     User?                @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  subscriptions Subscription[]
+  requests      PlanChangeRequest[]
+  periods       SubscriptionPeriod[]
+
+  @@unique([planId, version])
+  @@map("plan_versions")
+}
+
+model SubscriptionPeriod {
+  id               String     @id @default(uuid()) @db.Uuid
+  subscriptionId   String     @map("subscription_id") @db.Uuid
+  tenantId         String     @map("tenant_id") @db.Uuid
+  planId           String     @map("plan_id") @db.Uuid
+  planVersionId    String?    @map("plan_version_id") @db.Uuid
+  kind             PeriodKind
+  periodStart      DateTime   @map("period_start") @db.Timestamptz(3)
+  periodEnd        DateTime   @map("period_end") @db.Timestamptz(3)
+  amount           Decimal    @db.Decimal(12, 2)
+  paymentRequestId String?    @unique @map("payment_request_id") @db.Uuid
+  createdById      String?    @map("created_by_id") @db.Uuid
+  note             String?    @db.VarChar(300)
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  subscription   Subscription       @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan           Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  planVersion    PlanVersion?       @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  paymentRequest PlanChangeRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: Restrict)
+  createdBy      User?              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, periodStart])
+  @@index([subscriptionId])
+  @@map("subscription_periods")
+}
+
+model SubscriptionHistory {
+  id             String              @id @default(uuid()) @db.Uuid
+  subscriptionId String              @map("subscription_id") @db.Uuid
+  tenantId       String              @map("tenant_id") @db.Uuid
+  action         SubscriptionAction
+  fromStatus     SubscriptionStatus? @map("from_status")
+  toStatus       SubscriptionStatus? @map("to_status")
+  fromPlanId     String?             @map("from_plan_id") @db.Uuid
+  toPlanId       String?             @map("to_plan_id") @db.Uuid
+  fromPeriodEnd  DateTime?           @map("from_period_end") @db.Timestamptz(3)
+  toPeriodEnd    DateTime?           @map("to_period_end") @db.Timestamptz(3)
+  reason         String?             @db.VarChar(500)
+  actorId        String?             @map("actor_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([action, createdAt])
+  @@map("subscription_history")
+}
+
+model AdminAuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  actorId    String      @map("actor_id") @db.Uuid
+  action     String      @db.VarChar(60)
+  entityType String      @map("entity_type") @db.VarChar(40)
+  entityId   String      @map("entity_id") @db.VarChar(60)
+  before     Json?
+  after      Json?
+  reason     String?     @db.VarChar(500)
+  result     AuditResult @default(SUCCESS)
+  ip         String?     @db.VarChar(64)
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@map("admin_audit_logs")
+}
+
+model Notification {
+  id          String               @id @default(uuid()) @db.Uuid
+  audience    NotificationAudience
+  tenantId    String?              @map("tenant_id") @db.Uuid
+  type        NotificationType
+  title       String               @db.VarChar(160)
+  body        String               @db.VarChar(1000)
+  link        String?              @db.VarChar(300)
+  dedupeKey   String               @unique @map("dedupe_key") @db.VarChar(200)
+  readAt      DateTime?            @map("read_at") @db.Timestamptz(3)
+  emailStatus EmailStatus          @default(PENDING) @map("email_status")
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([audience, createdAt])
+  @@map("notifications")
+}
+
+model PlatformSettings {
+  id                  Int      @id @default(1)
+  platformName        String   @default("ModaFlow") @map("platform_name") @db.VarChar(60)
+  contactEmail        String?  @map("contact_email") @db.VarChar(254)
+  supportWhatsapp     String?  @map("support_whatsapp") @db.VarChar(20)
+  currency            String   @default("BOB") @db.Char(3)
+  timezone            String   @default("America/La_Paz") @db.VarChar(64)
+  trialDays           Int      @default(14) @map("trial_days")
+  renewalNoticeDays   Int      @default(5) @map("renewal_notice_days")
+  renewalPolicy       String?  @map("renewal_policy") @db.VarChar(1000)
+  dataRetentionDays   Int      @default(30) @map("data_retention_days")
+  qrEnabled           Boolean  @default(false) @map("qr_enabled")
+  transferEnabled     Boolean  @default(false) @map("transfer_enabled")
+  accountHolder       String?  @map("account_holder") @db.VarChar(120)
+  bankName            String?  @map("bank_name") @db.VarChar(80)
+  accountNumber       String?  @map("account_number") @db.VarChar(40)
+  accountType         String?  @map("account_type") @db.VarChar(40)
+  paymentInstructions String?  @map("payment_instructions") @db.VarChar(1000)
+  qrImageKey          String?  @map("qr_image_key") @db.VarChar(300)
+  notificationEmails  String[] @map("notification_emails")
+  emailTemplates      Json?    @map("email_templates")
+  updatedById         String?  @map("updated_by_id") @db.Uuid
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("platform_settings")
 }

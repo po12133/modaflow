@@ -59,6 +59,7 @@ Usa una contraseña segura para URL (letras y números), por ejemplo `openssl ra
 | `WEB_APP_URL` | privada | api | URL pública del frontend, para los enlaces de recuperación de contraseña |
 | `API_INTERNAL_URL` | privada | web (servidor) | URL interna de la API para Next.js (`http://api:3001`, la fija cada compose) |
 | `NEXT_PUBLIC_API_URL` | **pública** | web | URL pública de la API. Se incrusta en el bundle **al construir** |
+| `SCHEDULER_ENABLED` | privada | api | `false` desactiva el job de vencimientos en esa réplica (por defecto activo) |
 
 Separación público/privado: el contenedor `web` solo recibe `API_INTERNAL_URL` y `NEXT_PUBLIC_API_URL`; nunca recibe
 credenciales de PostgreSQL. Cualquier variable `NEXT_PUBLIC_*` es visible en el navegador: no pongas secretos ahí.
@@ -93,11 +94,11 @@ La API valida sus variables al arrancar ([env.validation.ts](apps/api/src/config
   suscripción. Los datos se conservan al menos 30 días más (`dataRetentionUntil`, sin borrado automático).
 - `EntitlementsService` es el servicio central de límites y funciones. Los futuros módulos lo usan con
   `@RequireActiveSubscription()`, `@RequireFeature('advancedReports')`, `assertWithinLimit()` o `consumeAiAnalysis()`.
-- El suscriptor solo puede **solicitar** un cambio de plan (`plan_change_requests`). No hay pagos ni activación
-  automática de planes de pago.
+- El suscriptor nunca activa un plan de pago por sí mismo: desde la Etapa 6 envía una solicitud de pago con
+  comprobante y un superadministrador la aprueba (ver Etapa 6).
 
 **Endpoints** (ver Swagger): `/auth/*`, `/users/me`, `/onboarding`, `/stores/current`, `/plans`, `/subscription`,
-`/subscription/change-requests`, `/health`.
+`/health`.
 
 ## Arquitectura (Etapa 2: registro de prendas con IA e inventario)
 
@@ -319,6 +320,80 @@ ocultar o un cambio de plan se reflejan de inmediato sin invalidaciones manuales
 `GET /catalog/products`, `PATCH /catalog/products/:id`, `POST /catalog/products/bulk-update`,
 `GET /catalog/order-requests`, `GET|PATCH /catalog/order-requests/:id`.
 
+## Arquitectura (Etapa 6: superadministración, suscripciones, pagos manuales y auditoría)
+
+**Roles globales**: `users.global_role` (`SUPERADMIN`, y `SUPPORT` preparado para soporte de solo lectura) es
+independiente de los roles dentro de un negocio. El área `/admin` (web) y `/admin/*` (API) exige rol global con
+`@AdminArea()` (lectura, ambos roles) o `@SuperadminOnly()` (acciones). Sin rol global, `/admin` responde 404.
+Ningún endpoint asigna roles globales y el primer usuario registrado **no** es superadministrador.
+
+**Primer superadministrador** (la persona se registra antes de forma normal; el CLI nunca crea usuarios ni toca
+contraseñas, cierra las sesiones del usuario y deja registro en auditoría):
+
+```bash
+npm run admin:grant -w @modaflow/api -- persona@empresa.com                 # desarrollo
+docker compose exec api node dist/cli/grant-superadmin.js persona@empresa.com  # contenedor (Coolify: terminal del servicio api)
+# Opciones: --role SUPPORT   --revoke   (no permite quitar el último superadministrador)
+```
+
+**Planes versionados**: los planes se editan en `/admin/planes`. Cambiar precio, límites o funciones crea una nueva
+`plan_versions`; cada suscripción guarda la versión contratada (`subscriptions.plan_version_id`) y los límites salen de
+esa versión, así que un cambio de precio no altera periodos ya contratados. La versión nueva se aplica al renovar,
+activar o cambiar de plan.
+
+**Reglas de renovación** ([billing-rules.ts](apps/api/src/billing/billing-rules.ts)), periodos mensuales por mes de
+calendario:
+- *Renovación* (plan de pago activo, mismo plan): el periodo nuevo empieza en el vencimiento vigente.
+- *Activación* (en prueba o vencido): empieza en el momento de la aprobación.
+- *Cambio de plan* (plan de pago activo a otro plan): inmediato, sin prorrateo.
+- Una suscripción `SUSPENDED` no admite pagos ni cambios hasta reactivarla. Cada cambio se valida, se guarda en
+  `subscription_history` y en la auditoría; cada pago aprobado crea un `subscription_periods` (único por solicitud).
+
+**Pagos manuales** (sin pasarela): QR bancario de ModaFlow (imagen en S3) y transferencia, configurados en
+`/admin/configuracion?tab=pagos`. Flujo del suscriptor en `/dashboard/suscripcion`: crear solicitud → ver instrucciones
+con el importe → subir comprobante → confirmar → revisión. El importe lo calcula siempre el servidor desde la versión
+vigente del plan (nunca del navegador). La aprobación es transaccional: bloquea la fila, exige estado `PENDING` y
+comprobante enviado; una segunda aprobación responde 409 `PAYMENT_ALREADY_REVIEWED`. Solo se admite una solicitud
+pendiente por negocio. Los registros financieros no se pueden borrar desde la interfaz.
+
+**Ingresos y métricas** (`/admin`, `/admin/estadisticas`): ingresos = suma de `amount_confirmed` de pagos aprobados;
+MRR = precios mensuales de las versiones contratadas de suscripciones de pago activas; ARPU = MRR / negocios que pagan;
+además conversión de prueba a pago, altas, vencimientos y uso agregado (sin datos individuales de las tiendas).
+
+**Vencimientos**: un job cada 10 minutos (`@nestjs/schedule`, con *advisory lock* de PostgreSQL y
+`FOR UPDATE SKIP LOCKED`, seguro con varias réplicas) marca suscripciones vencidas y genera avisos de vencimiento
+próximo. La autorización **no depende del job**: `EntitlementsService` calcula el estado efectivo en cada petición.
+`SCHEDULER_ENABLED=false` desactiva el job en una réplica.
+
+**Notificaciones**: dentro de la plataforma (`/dashboard/notificaciones`, `/admin/notificaciones`), deduplicadas con
+`dedupe_key` único. El correo queda **pendiente**: no hay SMTP configurado, los avisos se marcan `SKIPPED` y
+[mail.service.ts](apps/api/src/mail/mail.service.ts) es el único punto a completar.
+
+**Auditoría** (`/admin/auditoria`): `admin_audit_logs` es de solo inserción (un *trigger* de PostgreSQL rechaza
+`UPDATE` y `DELETE`). Guarda actor, acción, entidad, antes/después, motivo, IP y resultado; elimina claves sensibles
+(contraseñas, hashes, tokens, claves) antes de guardar. Suspender negocios o usuarios, extender pruebas y revisar
+pagos exige motivo.
+
+**Configuración general** (`platform_settings`, fila única): nombre, contacto, zona horaria, días de prueba, aviso y
+conservación, datos de pago y correos de aviso. Los secretos de infraestructura (base de datos, S3, Claude,
+autenticación) solo existen en variables de entorno y no se pueden ver ni editar desde el navegador.
+
+**Fuera de alcance**: pasarelas de pago, cobro recurrente automático, facturación fiscal, WhatsApp Business API,
+acceso a la cuenta de un suscriptor (impersonación) y borrado permanente de negocios.
+
+**Endpoints** (Swagger, etiquetas `admin` y `billing`): suscriptor `GET /subscription/payment-info`,
+`GET|POST /subscription/payment-requests`, `GET /subscription/payment-requests/:id`,
+`POST /subscription/payment-requests/:id/receipt|submit|cancel`, `GET /subscription/periods`,
+`GET /notifications`, `POST /notifications/read-all`, `POST /notifications/:id/read`. Administración:
+`GET /admin/dashboard`, `/admin/statistics`, `/admin/audit`, `/admin/notifications`,
+`POST /admin/notifications/:id/read`, `POST /admin/jobs/subscription-expiry` (ejecución manual del job);
+`GET /admin/tenants`, `/admin/tenants/:id`, `PATCH /admin/tenants/:id/status`; `GET /admin/users`, `/admin/users/:id`,
+`PATCH /admin/users/:id/status`; `GET /admin/plans`, `/admin/plans/:id/versions`, `PATCH /admin/plans/:id`;
+`GET /admin/subscriptions`, `/admin/subscriptions/:id`, `POST /admin/subscriptions/:id/renew|change-plan`
+(pago manual registrado por el administrador), `POST /admin/subscriptions/:id/extend-trial`,
+`POST /admin/subscriptions/:id/suspend|reactivate|cancel`; `GET /admin/payments`, `/admin/payments/:id`,
+`POST /admin/payments/:id/approve|reject`; `GET|PATCH /admin/settings`, `POST /admin/settings/payment-qr`.
+
 ## Desarrollo con Docker (recomendado)
 
 Desde la raíz del repositorio:
@@ -435,6 +510,15 @@ Las pruebas e2e cubren:
   consulta pública anónima sin datos privados, búsqueda, filtros, orden y paginación, detalle y variantes, agotados
   (mostrar/ocultar), solicitudes con precios del servidor, mensaje y enlace de WhatsApp, stock sin cambios, token de
   "WhatsApp abierto", catálogo oculto, sitemap, planes (Básico, Pro, prueba vencida) y aislamiento entre tiendas.
+- **Etapa 6:** acceso a `/admin` por rol global (dueño y soporte), sin autoasignación de privilegios, protección del
+  último superadministrador, suspensión de usuarios y negocios con cierre de sesiones, solicitud de pago con importe
+  del servidor, comprobante en S3, una sola pendiente por negocio, aprobación concurrente (una 200 y dos 409, un solo
+  periodo), rechazo, renovación desde el vencimiento vigente, activación desde la aprobación, cambio de plan,
+  suspensión, reactivación, cancelación, extensión de prueba con motivo, versionado de precios sin alterar lo
+  contratado, job de vencimientos idempotente sin avisos duplicados, auditoría inmutable sin datos sensibles,
+  ingresos solo de pagos aprobados, MRR/ARPU y configuración sin secretos.
+
+Los archivos e2e se ejecutan uno tras otro (`fileParallelism: false`) porque comparten la misma base de datos de prueba.
 
 En las pruebas de créditos, el modelo de visión se reemplaza por un **doble de prueba**: se prueba la lógica real de
 créditos y no se simula a Claude. La llamada real a Claude tiene su propia prueba, que solo se ejecuta con clave:
@@ -454,11 +538,15 @@ Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
   `ProductVariant`, `ProductImage`, `InventoryMovement` y `AiAnalysis` (Etapa 2); `Sale`, `SaleItem` y
   `SaleCancellation` (Etapa 3); costos históricos, total neto y categoría en `SaleItem` y zona horaria en `Store`
   (Etapa 4); `CatalogSettings`, `CatalogOrderRequest`, `CatalogOrderRequestItem`, y `slug`/`catalogPublished` en
-  `Product` (Etapa 5). Todos con claves foráneas,
+  `Product` (Etapa 5); `PlanVersion`, `SubscriptionPeriod`, `SubscriptionHistory`, `AdminAuditLog`, `Notification`,
+  `PlatformSettings`, rol global y estado en `User`, y campos de pago y revisión en `PlanChangeRequest` (Etapa 6).
+  Todos con claves foráneas,
   índices (incluidos índices trigram `pg_trgm` para la búsqueda) y restricciones `CHECK`.
 - Migraciones: `20261115015333_init_tenancy_and_subscriptions`, `20261115030329_catalog_inventory_ai`,
-  `20261115040424_sale_movement_types`, `20261115040539_sales_pos_receipts`, `20261115120000_reports_costs_timezone` y `20261115180000_online_catalog` (rellena
-  el slug de los productos existentes). Desde la segunda solo agregan tablas,
+  `20261115040424_sale_movement_types`, `20261115040539_sales_pos_receipts`, `20261115120000_reports_costs_timezone`, `20261115180000_online_catalog` (rellena
+  el slug de los productos existentes), `20261115200000_subscription_suspended` (valor de enum, aparte) y
+  `20261115200100_saas_admin_billing` (crea la versión 1 de cada plan, enlaza las suscripciones existentes, registra los
+  periodos de prueba vigentes, la configuración inicial, las restricciones `CHECK` y el *trigger* de auditoría). Desde la segunda solo agregan tablas,
   valores de enum, columnas con valor por defecto o nulas (`tenants.product_seq`, `tenants.sale_seq`,
   `inventory_movements.sale_id`) y restricciones, sin cambios destructivos. Los valores nuevos del enum de
   movimientos van en una migración aparte porque PostgreSQL no permite usarlos en la misma transacción que los crea.
@@ -466,8 +554,9 @@ Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
 - Migraciones versionadas en `apps/api/prisma/migrations`. Al arrancar, el contenedor `api` (desarrollo y
   producción) ejecuta `prisma migrate deploy` (solo aplica migraciones pendientes, nunca borra datos) y el seed de planes.
 - Nueva migración en desarrollo: `npm run prisma:migrate:dev -w @modaflow/api -- --name <nombre>`.
-- Seed manual: `npm run prisma:seed -w @modaflow/api`. Es idempotente: actualiza los planes por `code` y desactiva
-  los que ya no estén en el catálogo.
+- Seed manual: `npm run prisma:seed -w @modaflow/api`. Es idempotente y desde la Etapa 6 solo **crea** lo que falta
+  (planes con su versión 1 y la fila de configuración): no sobrescribe precios ni planes editados en `/admin/planes`.
+  No crea usuarios ni superadministradores.
 - Prisma 7 usa *driver adapters*: la conexión se hace con `@prisma/adapter-pg` ([prisma.service.ts](apps/api/src/prisma/prisma.service.ts)).
 - El cliente se genera en `apps/api/src/generated/prisma` (ignorado por git) con `npm run prisma:generate`;
   `npm run build` y el contenedor de desarrollo lo generan automáticamente.
@@ -616,6 +705,7 @@ Variables de entorno de staging (distintas de producción, **otra contraseña**)
 | exceljs (Etapa 4; `uuid` forzado a 11.1.1 por `overrides`) | 4.4.0 |
 | recharts (Etapa 4) | 3.10.1 |
 | qrcode (Etapa 5) | 1.5.4 |
+| @nestjs/schedule (Etapa 6) | 12.0.2 |
 | zod (web y api) | 4.6.7 |
 | @nestjs/throttler / @node-rs/argon2 (Etapa 1) | 6.7.1 / 2.2.2 |
 | SeaweedFS (S3 local, solo desarrollo) | 4.53 |

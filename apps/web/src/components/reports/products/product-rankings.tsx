@@ -1,7 +1,7 @@
 import { formatMoney, variantLabel } from "@/lib/format";
 import type { ProductsReport } from "@/types/reports";
 import { RankChart } from "../charts/rank-chart";
-import { Panel } from "../ui/panel";
+import { Panel } from "@/components/common/panel";
 
 export function ProductRankings({ report, sort, showRanking }: { report: ProductsReport; sort: string; showRanking: boolean }) {
   const byRevenue = sort.startsWith("revenue");

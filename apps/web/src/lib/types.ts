@@ -1,7 +1,7 @@
 // Shapes returned by the ModaFlow API (see Swagger at /docs). Dates arrive as ISO strings.
 
 export type MembershipRole = "OWNER" | "ADMIN" | "SELLER";
-export type SubscriptionStatus = "TRIALING" | "ACTIVE" | "EXPIRED" | "CANCELED";
+export type SubscriptionStatus = "TRIALING" | "ACTIVE" | "EXPIRED" | "CANCELED" | "SUSPENDED";
 export type UsagePeriod = "TOTAL" | "MONTHLY";
 export type CatalogAccess = "NONE" | "TEMPORARY" | "FULL";
 
@@ -10,6 +10,7 @@ export interface User {
   name: string;
   email: string;
   createdAt: string;
+  globalRole?: "SUPERADMIN" | "SUPPORT" | null;
 }
 
 export interface Me {
@@ -84,15 +85,6 @@ export interface Entitlements {
     onlineCatalog: boolean;
     advancedManagement: boolean;
   };
-}
-
-export interface PlanChangeRequest {
-  id: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
-  fromPlan: string;
-  toPlan: string;
-  note: string | null;
-  createdAt: string;
 }
 
 /** Error body returned by the API: { statusCode, code, message, errors? }. */

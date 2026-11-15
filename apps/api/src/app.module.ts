@@ -17,6 +17,10 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { ProductsModule } from './products/products.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { StorefrontModule } from './storefront/storefront.module.js';
+import { AdminModule } from './admin/admin.module.js';
+import { BillingModule } from './billing/billing.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { ScheduleModule } from '@nestjs/schedule';
 import { SalesModule } from './sales/sales.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { StoresModule } from './stores/stores.module.js';
@@ -59,6 +63,11 @@ import { UsersModule } from './users/users.module.js';
     ReportsModule,
     // Stage 5
     StorefrontModule,
+    // Stage 6
+    ScheduleModule.forRoot(),
+    NotificationsModule,
+    BillingModule,
+    AdminModule,
   ],
   providers: [
     // Global guards run in this order: rate limit -> CSRF origin check -> session.

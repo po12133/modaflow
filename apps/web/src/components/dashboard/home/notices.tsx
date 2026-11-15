@@ -1,8 +1,9 @@
 import { Clock } from "lucide-react";
 import { plural } from "@/lib/format";
-import type { Entitlements, PlanChangeRequest } from "@/lib/types";
+import type { Entitlements } from "@/lib/types";
+import type { PaymentRequest } from "@/types/billing";
 
-export function Notices({ subscription, pending }: { subscription: Entitlements; pending?: PlanChangeRequest }) {
+export function Notices({ subscription, pending }: { subscription: Entitlements; pending?: PaymentRequest }) {
   return (
     <>
 {(pending || (subscription.status === "TRIALING" && subscription.daysRemaining <= 3)) && (
@@ -19,7 +20,7 @@ export function Notices({ subscription, pending }: { subscription: Entitlements;
           {pending && (
             <p className="flex items-center gap-2.5 rounded-xl border border-[#c9dafc] bg-[#e7efff] px-3.5 py-3 text-sm font-semibold text-[#2357b8]">
               <Clock className="size-4 shrink-0" aria-hidden="true" />
-              Solicitaste el plan {pending.toPlan}. Te contactaremos para coordinar el pago.
+              {pending.submittedAt ? `Tu pago del plan ${pending.toPlan.name} está en revisión.` : `Tienes un pago pendiente del plan ${pending.toPlan.name}: sube tu comprobante en Suscripción.`}
             </p>
           )}
         </section>

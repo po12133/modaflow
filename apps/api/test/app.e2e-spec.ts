@@ -258,34 +258,29 @@ describe('ModaFlow API (e2e)', () => {
       expect(bStore.body.name).toBe('Tienda B');
       expect(bStore.body.id).toBe(B.onboarding.store.id);
 
-      // B's plan change request is invisible and untouchable for A.
-      const req = await B.agent.post('/subscription/change-requests').send({ planCode: 'pro' }).expect(201);
-      expect((await A.agent.get('/subscription/change-requests').expect(200)).body).toEqual([]);
-      const cross = await A.agent.delete(`/subscription/change-requests/${req.body.id}`).expect(404);
-      expect(cross.body.code).toBe('REQUEST_NOT_FOUND');
+      // B's payment request is invisible and untouchable for A.
+      await prisma.platformSettings.update({ where: { id: 1 }, data: { qrEnabled: true } });
+      const req = await B.agent.post('/subscription/payment-requests').send({ planCode: 'pro', method: 'QR' }).expect(201);
+      expect((await A.agent.get('/subscription/payment-requests').expect(200)).body).toEqual([]);
+      await A.agent.get(`/subscription/payment-requests/${req.body.id}`).expect(404);
+      const cross = await A.agent.post(`/subscription/payment-requests/${req.body.id}/cancel`).expect(404);
+      expect(cross.body.code).toBe('PAYMENT_NOT_FOUND');
       await A.agent.put('/stores/current').send({ ...storeBody(), tenantId: B.onboarding.tenantId }).expect(400);
       expect((await B.agent.get('/stores/current').expect(200)).body.name).toBe('Tienda B');
     });
   });
 
   describe('subscription', () => {
-    it('handles plan change requests without activating paid plans', async () => {
+    it('handles payment requests without activating paid plans', async () => {
       const { agent: a } = await registerAndOnboard('planreq');
-      const created = await a
-        .post('/subscription/change-requests')
-        .send({ planCode: 'pro', note: 'Pago por QR' })
-        .expect(201);
-      expect(created.body).toMatchObject({ status: 'PENDING', fromPlan: 'Gratis', toPlan: 'Pro' });
-      expect((await a.post('/subscription/change-requests').send({ planCode: 'premium' }).expect(409)).body.code).toBe(
-        'PENDING_REQUEST_EXISTS',
-      );
-      expect((await a.post('/subscription/change-requests').send({ planCode: 'gratis' }).expect(400)).body.code).toBe(
-        'PLAN_NOT_REQUESTABLE',
-      );
-      // Still on the trial: requesting does not change the plan.
+      await prisma.platformSettings.update({ where: { id: 1 }, data: { qrEnabled: true } });
+      const created = await a.post('/subscription/payment-requests').send({ planCode: 'pro', method: 'QR' }).expect(201);
+      expect(created.body).toMatchObject({ status: 'PENDING', amountExpected: '69.00', toPlan: { code: 'pro' } });
+      expect((await a.post('/subscription/payment-requests').send({ planCode: 'premium', method: 'QR' }).expect(409)).body.code).toBe('PENDING_REQUEST_EXISTS');
+      expect((await a.post('/subscription/payment-requests').send({ planCode: 'gratis', method: 'QR' }).expect(400)).body.code).toBe('PLAN_NOT_PAYABLE');
       expect((await a.get('/subscription').expect(200)).body.plan.code).toBe('gratis');
-      await a.delete(`/subscription/change-requests/${created.body.id}`).expect(204);
-      await a.post('/subscription/change-requests').send({ planCode: 'premium' }).expect(201);
+      expect((await a.post(`/subscription/payment-requests/${created.body.id}/cancel`).expect(200)).body.status).toBe('CANCELED');
+      await a.post('/subscription/payment-requests').send({ planCode: 'premium', method: 'QR' }).expect(201);
     });
 
     it('restricts an expired trial to read-only and keeps the data', async () => {
@@ -304,9 +299,10 @@ describe('ModaFlow API (e2e)', () => {
       expect(sub.body.dataRetentionUntil).not.toBeNull();
       // Existing data stays readable and the subscription section stays reachable.
       await a.get('/stores/current').expect(200);
-      await a.post('/subscription/change-requests').send({ planCode: 'basico' }).expect(201);
+      await prisma.platformSettings.update({ where: { id: 1 }, data: { qrEnabled: true } });
+      await a.post('/subscription/payment-requests').send({ planCode: 'basico', method: 'QR' }).expect(201);
       const persisted = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: onboarding.tenantId } });
-      expect(persisted.status).toBe('EXPIRED');
+      expect(persisted.status).toBe('TRIALING');
     });
   });
 });

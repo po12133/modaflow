@@ -10,6 +10,7 @@ import { STORE_SELECT } from '../stores/stores.service.js';
 import type { StoreFieldsDto } from '../stores/dto.js';
 import { slugify } from '../stores/store-fields.js';
 import { addDays } from '../subscriptions/entitlement-rules.js';
+import { latestVersion } from '../billing/plan-versions.js';
 
 @Injectable()
 export class OnboardingService {
@@ -65,11 +66,14 @@ export class OnboardingService {
         });
 
         const now = new Date();
-        const trialEndsAt = addDays(now, trialPlan.durationDays);
-        await tx.subscription.create({
+        const settings = await tx.platformSettings.findUnique({ where: { id: 1 }, select: { trialDays: true } });
+        const trialEndsAt = addDays(now, settings?.trialDays ?? trialPlan.durationDays);
+        const version = await latestVersion(tx, trialPlan.id);
+        const subscription = await tx.subscription.create({
           data: {
             tenantId: tenant.id,
             planId: trialPlan.id,
+            planVersionId: version.id,
             // Without trial eligibility the store is created read-only until a plan is requested.
             status: trialGranted ? 'TRIALING' : 'EXPIRED',
             startedAt: now,
@@ -79,6 +83,12 @@ export class OnboardingService {
         if (trialGranted) {
           await tx.trialGrant.create({
             data: { userId: auth.userId, tenantId: tenant.id, whatsappNormalized: dto.whatsapp },
+          });
+          await tx.subscriptionPeriod.create({
+            data: { subscriptionId: subscription.id, tenantId: tenant.id, planId: trialPlan.id, planVersionId: version.id, kind: 'TRIAL', periodStart: now, periodEnd: trialEndsAt, amount: 0 },
+          });
+          await tx.subscriptionHistory.create({
+            data: { subscriptionId: subscription.id, tenantId: tenant.id, action: 'TRIAL_STARTED', toStatus: 'TRIALING', toPlanId: trialPlan.id, toPeriodEnd: trialEndsAt, actorId: auth.userId },
           });
         }
 

@@ -1,3 +1,4 @@
+import type { GlobalRole } from '../generated/prisma/enums.js';
 import type { Request } from 'express';
 import type { MembershipRole } from '../generated/prisma/enums.js';
 
@@ -5,6 +6,7 @@ export interface AuthContext {
   userId: string;
   sessionId: string;
   activeTenantId: string | null;
+  globalRole: GlobalRole | null;
 }
 
 export interface TenantContext {

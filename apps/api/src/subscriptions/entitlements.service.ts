@@ -8,6 +8,7 @@ import {
   effectiveStatus,
   type FeatureKey,
   fitsWithinLimit,
+  contractedRules,
   isFeatureEnabled,
   isOperational,
   type LimitKey,
@@ -34,7 +35,6 @@ export interface Entitlements {
   startedAt: Date;
   expiresAt: Date;
   daysRemaining: number;
-  /** Set once the subscription is no longer operational: data kept until this date. */
   dataRetentionUntil: Date | null;
   limits: {
     products: LimitUsage;
@@ -59,11 +59,6 @@ const LIMIT_LABELS: Record<LimitKey, string> = {
   branches: 'sucursales',
 };
 
-/**
- * Single source of truth for "what can this tenant do right now".
- * Reusable by inventory, sales, AI and catalog modules; always call it with
- * the tenant id resolved by TenantGuard, never with a client-supplied id.
- */
 @Injectable()
 export class EntitlementsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -71,22 +66,16 @@ export class EntitlementsService {
   async getForTenant(tenantId: string, now = new Date()): Promise<Entitlements> {
     const sub = await this.prisma.subscription.findUnique({
       where: { tenantId },
-      include: { plan: true },
+      include: { plan: true, planVersion: true },
     });
     if (!sub) {
       throw new AppError(HttpStatus.NOT_FOUND, 'SUBSCRIPTION_NOT_FOUND', 'La tienda no tiene una suscripción.');
     }
 
     const status = effectiveStatus(sub, now);
-    if (status !== sub.status) {
-      // Persist the transition lazily; harmless if another request already did it.
-      await this.prisma.subscription.updateMany({
-        where: { id: sub.id, status: sub.status },
-        data: { status },
-      });
-    }
+    const rules = contractedRules(sub);
 
-    const window = usageWindow(sub.plan.aiAnalysesPeriod, sub, now);
+    const window = usageWindow(rules.aiAnalysesPeriod, sub, now);
     const [aiUsage, users, branches, products] = await Promise.all([
       this.prisma.subscriptionUsage.findUnique({
         where: { tenantId_metric_periodStart: { tenantId, metric: 'AI_ANALYSES', periodStart: window.start } },
@@ -94,7 +83,6 @@ export class EntitlementsService {
       }),
       this.prisma.tenantMembership.count({ where: { tenantId } }),
       this.prisma.store.count({ where: { tenantId } }),
-      // Rule: only ACTIVE products count; variants and archived products do not.
       this.prisma.product.count({ where: { tenantId, status: 'ACTIVE' } }),
     ]);
     const operational = isOperational(status);
@@ -115,27 +103,26 @@ export class EntitlementsService {
       daysRemaining: operational ? daysRemaining(sub.currentPeriodEnd, now) : 0,
       dataRetentionUntil: operational ? null : retentionUntil(sub.currentPeriodEnd, DATA_RETENTION_DAYS),
       limits: {
-        products: { limit: sub.plan.maxProducts, used: products },
+        products: { limit: rules.maxProducts, used: products },
         aiAnalyses: {
-          limit: sub.plan.aiAnalysesLimit,
+          limit: rules.aiAnalysesLimit,
           used: aiUsage?.used ?? 0,
-          period: sub.plan.aiAnalysesPeriod,
+          period: rules.aiAnalysesPeriod,
           periodStart: window.start,
           periodEnd: window.end,
         },
-        users: { limit: sub.plan.maxUsers, used: users },
-        branches: { limit: sub.plan.maxBranches, used: branches },
+        users: { limit: rules.maxUsers, used: users },
+        branches: { limit: rules.maxBranches, used: branches },
       },
       features: {
-        inventoryAndSales: isFeatureEnabled(sub.plan, status, 'inventoryAndSales'),
-        advancedReports: isFeatureEnabled(sub.plan, status, 'advancedReports'),
-        onlineCatalog: isFeatureEnabled(sub.plan, status, 'onlineCatalog'),
-        advancedManagement: isFeatureEnabled(sub.plan, status, 'advancedManagement'),
+        inventoryAndSales: isFeatureEnabled(rules, status, 'inventoryAndSales'),
+        advancedReports: isFeatureEnabled(rules, status, 'advancedReports'),
+        onlineCatalog: isFeatureEnabled(rules, status, 'onlineCatalog'),
+        advancedManagement: isFeatureEnabled(rules, status, 'advancedManagement'),
       },
     };
   }
 
-  /** Throws unless the subscription allows new business operations. */
   async assertOperational(tenantId: string): Promise<Entitlements> {
     const ent = await this.getForTenant(tenantId);
     if (!ent.isOperational) {
@@ -161,7 +148,6 @@ export class EntitlementsService {
     return ent;
   }
 
-  /** Throws when adding `increment` units would exceed the plan limit. */
   async assertWithinLimit(tenantId: string, key: LimitKey, increment = 1): Promise<Entitlements> {
     const ent = await this.assertOperational(tenantId);
     const { limit, used } = ent.limits[key];
@@ -176,12 +162,6 @@ export class EntitlementsService {
     return ent;
   }
 
-  /**
-   * Reserves one AI analysis credit for the current usage window. The
-   * conditional UPDATE (used < limit) is atomic, so concurrent requests can
-   * never exceed the plan limit. Returns the window the credit belongs to, so
-   * refundAiCredit can return it if the analysis fails.
-   */
   async reserveAiCredit(tenantId: string): Promise<{ periodStart: Date; limit: number; used: number }> {
     const ent = await this.assertOperational(tenantId);
     const { limit, periodStart, periodEnd } = ent.limits.aiAnalyses;
@@ -209,7 +189,6 @@ export class EntitlementsService {
     return { periodStart, limit, used: row.used };
   }
 
-  /** Returns a reserved credit (failed analysis). Never drops below zero. */
   async refundAiCredit(tenantId: string, periodStart: Date): Promise<void> {
     await this.prisma.subscriptionUsage.updateMany({
       where: { tenantId, metric: 'AI_ANALYSES', periodStart, used: { gt: 0 } },

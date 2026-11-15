@@ -4,7 +4,7 @@ import { STOCK_INCREASES } from "@/config/reports";
 import { plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { InventoryReport } from "@/types/reports";
-import { Panel } from "../ui/panel";
+import { Panel } from "@/components/common/panel";
 
 const LABELS: Partial<Record<string, string>> = { SALE: "Salidas por ventas", SALE_CANCEL: "Restituciones por anulación" };
 

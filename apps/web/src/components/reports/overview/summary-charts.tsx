@@ -4,7 +4,7 @@ import type { PaymentRow, ProductsReport, SalesChart } from "@/types/reports";
 import { RankChart } from "../charts/rank-chart";
 import { TopProductsChart } from "../charts/top-products-chart";
 import { SalesTrendChart } from "../charts/trend-chart";
-import { Panel } from "../ui/panel";
+import { Panel } from "@/components/common/panel";
 
 interface SummaryChartsProps {
   chart: SalesChart;

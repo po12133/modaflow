@@ -15,7 +15,7 @@ export const MAX_FAILED_LOGINS = 5;
 export const LOCKOUT_MINUTES = 15;
 const RESET_TOKEN_TTL_MINUTES = 60;
 
-const USER_SELECT = { id: true, name: true, email: true, createdAt: true } as const;
+const USER_SELECT = { id: true, name: true, email: true, createdAt: true, globalRole: true } as const;
 
 @Injectable()
 export class AuthService {
@@ -57,6 +57,10 @@ export class AuthService {
     }
 
     const now = new Date();
+    if (user.status === 'SUSPENDED') {
+      await this.passwords.verifyDummy(dto.password);
+      throw new AppError(HttpStatus.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Tu acceso está suspendido. Escribe a soporte de ModaFlow.');
+    }
     if (user.lockedUntil && user.lockedUntil > now) {
       const minutes = Math.ceil((user.lockedUntil.getTime() - now.getTime()) / 60_000);
       throw new AppError(

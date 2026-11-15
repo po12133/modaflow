@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatMoney, plural } from "@/lib/format";
 import type { GrossProfit, ReportSummary } from "@/types/reports";
-import { KpiCard } from "../ui/kpi-card";
+import { KpiCard } from "@/components/common/kpi-card";
 
 function profitHint(profit: GrossProfit, sales: number): string {
   if (sales === 0) return "Sin ventas en el periodo";

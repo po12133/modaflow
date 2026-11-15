@@ -45,7 +45,7 @@ describe('Online catalog (e2e)', () => {
 
   const setPlan = async (tenantId: string, code: string, extra: Record<string, unknown> = {}) => {
     const plan = await prisma.plan.findUniqueOrThrow({ where: { code } });
-    await prisma.subscription.update({ where: { tenantId }, data: { planId: plan.id, status: 'ACTIVE', ...extra } });
+    await prisma.subscription.update({ where: { tenantId }, data: { planId: plan.id, planVersionId: (await prisma.planVersion.findFirstOrThrow({ where: { planId: plan.id }, orderBy: { version: 'desc' } })).id, status: 'ACTIVE', ...extra } });
   };
 
   beforeAll(async () => {

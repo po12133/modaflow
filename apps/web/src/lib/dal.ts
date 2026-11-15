@@ -2,7 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { ApiError, api } from "./api";
-import type { AiUsage, Category, Entitlements, Me, Plan, PlanChangeRequest, ProductDetail, Store } from "./types";
+import type { AiUsage, Category, Entitlements, Me, Plan, ProductDetail, Store } from "./types";
 
 /**
  * Data access layer: every read goes through the API with the user's session,
@@ -44,8 +44,6 @@ export const getDashboardContext = cache(async (): Promise<DashboardContext> => 
 });
 
 export const getPlans = cache(() => api<Plan[]>("/plans", { auth: false }));
-
-export const getPlanChangeRequests = cache(() => api<PlanChangeRequest[]>("/subscription/change-requests"));
 
 export const getCategories = cache(() => api<Category[]>("/categories"));
 

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { REPORT_PERIODS } from "@/config/reports";
 import { chip, useUrlUpdate } from "@/hooks/use-url-update";
 
-export function PeriodPicker({ period, from, to }: { period: string; from: string; to: string }) {
+export function PeriodPicker({ period, from, to, options = REPORT_PERIODS }: { period: string; from: string; to: string; options?: readonly (readonly [string, string])[] }) {
   const { update, pending } = useUrlUpdate();
   const [custom, setCustom] = useState(period === "custom");
   const [range, setRange] = useState({ from, to });
@@ -23,7 +23,7 @@ export function PeriodPicker({ period, from, to }: { period: string; from: strin
   return (
     <div className="grid gap-2" aria-busy={pending}>
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:px-0" role="group" aria-label="Periodo">
-        {REPORT_PERIODS.map(([value, label]) => {
+        {options.map(([value, label]) => {
           const on = value === "custom" ? custom : !custom && period === value;
           return (
             <button

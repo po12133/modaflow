@@ -21,6 +21,18 @@ export class MailService {
     await this.deliver(to.userId, () => `Recuperación de contraseña para ${to.email}: ${resetUrl}`);
   }
 
+  isConfigured(): boolean {
+    return false;
+  }
+
+  async sendNotification(recipients: string[], subject: string): Promise<'SENT' | 'SKIPPED'> {
+    if (!this.isConfigured() || recipients.length === 0) {
+      this.logger.debug(`Notification email skipped (SMTP pending): ${subject}`);
+      return 'SKIPPED';
+    }
+    return Promise.resolve('SENT');
+  }
+
   private deliver(userId: string, devPreview: () => string): Promise<void> {
     if (this.isProduction) {
       this.logger.warn(`Email delivery not configured (SMTP pending); message for user ${userId} was not sent.`);

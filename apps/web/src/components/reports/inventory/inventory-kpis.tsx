@@ -1,6 +1,6 @@
 import { formatMoney, plural } from "@/lib/format";
 import type { InventoryReport } from "@/types/reports";
-import { KpiCard } from "../ui/kpi-card";
+import { KpiCard } from "@/components/common/kpi-card";
 
 export function InventoryKpis({ stock, lowStock, value }: Pick<InventoryReport, "stock" | "value"> & { lowStock: number }) {
   return (

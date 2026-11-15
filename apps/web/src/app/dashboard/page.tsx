@@ -5,7 +5,8 @@ import { QuickActions } from "@/components/dashboard/home/quick-actions";
 import { SubscriptionSummary } from "@/components/dashboard/home/subscription-summary";
 import { TodaySales } from "@/components/dashboard/home/today-sales";
 import { WelcomeBanner } from "@/components/dashboard/home/welcome-banner";
-import { getDashboardContext, getPlanChangeRequests } from "@/lib/dal";
+import { getDashboardContext } from "@/lib/dal";
+import { getPaymentRequests } from "@/services/billing";
 import { getDashboardSummary } from "@/services/reports";
 
 export const metadata: Metadata = { title: "Inicio" };
@@ -15,7 +16,7 @@ export const instant = false;
 export default async function DashboardHome({ searchParams }: PageProps<"/dashboard">) {
   const [{ me, store, subscription }, requests, params, sales] = await Promise.all([
     getDashboardContext(),
-    getPlanChangeRequests(),
+    getPaymentRequests(),
     searchParams,
     getDashboardSummary(),
   ]);
