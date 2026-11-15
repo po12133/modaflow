@@ -18,7 +18,7 @@ export const MAIN_NAV: NavItem[] = [
   { href: "/dashboard/productos", label: "Inventario", icon: Package, also: ["/dashboard/inventario"] },
   { href: "/dashboard/ventas/nueva", label: "Vender", icon: ShoppingCart, also: ["/dashboard/vender"] },
   { href: "/dashboard/ventas", label: "Ventas", icon: ReceiptText, except: ["/dashboard/ventas/nueva"] },
-  { href: "/dashboard/reportes", label: "Reportes", icon: ChartLine, soon: true },
+  { href: "/dashboard/reportes", label: "Reportes", icon: ChartLine },
 ];
 
 export const ACCOUNT_NAV: NavItem[] = [

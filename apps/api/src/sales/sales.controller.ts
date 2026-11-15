@@ -148,16 +148,3 @@ export class PublicReceiptsController {
     await sendPdf(res, receipt, `boleta-${receipt.number}.pdf`);
   }
 }
-
-@ApiTags('dashboard')
-@TenantScoped()
-@Controller('dashboard')
-export class DashboardController {
-  constructor(private readonly sales: SalesService) {}
-
-  @Get('sales-summary')
-  @ApiOperation({ summary: 'Ventas de hoy (hora de Bolivia, sin anuladas) y últimas ventas' })
-  summary(@CurrentTenant() tenant: TenantContext) {
-    return this.sales.summary(tenant.tenantId);
-  }
-}

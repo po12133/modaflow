@@ -8,8 +8,10 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { ProductsService } from '../products/products.service.js';
 import { EntitlementsService } from '../subscriptions/entitlements.service.js';
 import type { CancelSaleDto, CartDto, CreateSaleDto, ListSalesQueryDto, PosProductsQueryDto } from './dto.js';
-import { periodRange, startOfLocalDay } from './sale-dates.js';
+import { tenantTimezone } from '../common/tenant-timezone.js';
+import { periodRange } from './sale-dates.js';
 import {
+  allocateGeneralDiscount,
   cashChange,
   computeSale,
   formatSaleNumber,
@@ -183,6 +185,10 @@ export class SalesService {
           return { variant, quantity: item.quantity, discount: item.discount };
         });
         const totals = this.compute(lines, dto);
+        const nets = allocateGeneralDiscount(
+          totals.lines.map((l) => l.lineTotalCents),
+          totals.discountCents,
+        );
         const cash = this.change(dto, totals);
         for (const line of lines) {
           if (line.variant.stock < line.quantity) {
@@ -236,6 +242,10 @@ export class SalesService {
                   unitDiscount: fromCents(r.unitDiscountCents),
                   finalUnitPrice: fromCents(r.finalUnitPriceCents),
                   lineTotal: fromCents(r.lineTotalCents),
+                  netTotal: fromCents(nets[i]!),
+                  unitCost: locked.get(line.variant.id)!.purchasePrice,
+                  categoryId: locked.get(line.variant.id)!.categoryId,
+                  categoryName: locked.get(line.variant.id)!.categoryName,
                 };
               }),
             },
@@ -271,7 +281,7 @@ export class SalesService {
   async list(tenantId: string, q: ListSalesQueryDto) {
     const page = q.page ?? 1;
     const pageSize = q.pageSize ?? 20;
-    const range = periodRange(q.period, new Date(), q.from, q.to);
+    const range = periodRange(q.period, new Date(), q.from, q.to, await tenantTimezone(this.prisma, tenantId));
     const number = q.number ? parseSaleNumber(q.number) : null;
     if (q.number && number === null) {
       return { items: [], total: 0, page, pageSize, totalPages: 1, summary: { count: 0, total: '0.00' } };
@@ -438,28 +448,6 @@ export class SalesService {
   // ---------------------------------------------------------------------------
 
   /** Today's effective sales (Bolivia time, canceled excluded) and the latest sales. */
-  async summary(tenantId: string) {
-    const start = startOfLocalDay(new Date());
-    const today = { tenantId, status: 'COMPLETED' as const, createdAt: { gte: start } };
-    const [agg, recent] = await this.prisma.$transaction([
-      this.prisma.sale.aggregate({ where: today, _count: true, _sum: { total: true, unitCount: true } }),
-      this.prisma.sale.findMany({
-        where: { tenantId },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-        select: { id: true, number: true, total: true, unitCount: true, paymentMethod: true, status: true, createdAt: true },
-      }),
-    ]);
-    return {
-      today: {
-        sales: agg._count,
-        total: (agg._sum.total ?? new Prisma.Decimal(0)).toFixed(2),
-        units: agg._sum.unitCount ?? 0,
-      },
-      recent: recent.map((s) => ({ ...s, number: formatSaleNumber(s.number), total: s.total.toFixed(2) })),
-    };
-  }
-
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------

@@ -1,48 +1,43 @@
-/** Business day boundaries in Bolivia (America/La_Paz: UTC-4 all year, no DST). */
-const OFFSET_MS = -4 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { addDays, DEFAULT_TIMEZONE, localDateOf, parseLocalDate, startOfDay } from '../common/zoned-time.js';
 
 export type SalePeriod = 'today' | 'yesterday' | 'last7' | 'month' | 'custom' | 'all';
 
 export interface DateRange {
-  /** Inclusive. */
   gte?: Date;
-  /** Exclusive. */
   lt?: Date;
 }
 
-/** UTC instant of 00:00 (Bolivia) of the local day containing `instant`. */
-export function startOfLocalDay(instant: Date): Date {
-  const local = instant.getTime() + OFFSET_MS;
-  return new Date(Math.floor(local / DAY_MS) * DAY_MS - OFFSET_MS);
+export function startOfLocalDay(instant: Date, tz = DEFAULT_TIMEZONE): Date {
+  return startOfDay(localDateOf(instant, tz), tz);
 }
 
-/** UTC instant of 00:00 (Bolivia) for a "YYYY-MM-DD" local date. */
-export function localDateStart(date: string): Date {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(Date.UTC(y!, m! - 1, d!) - OFFSET_MS);
+export function localDateStart(date: string, tz = DEFAULT_TIMEZONE): Date {
+  const d = parseLocalDate(date);
+  if (!d) throw new RangeError(`Invalid date: ${date}`);
+  return startOfDay(d, tz);
 }
 
-export function periodRange(period: SalePeriod | undefined, now: Date, from?: string, to?: string): DateRange {
-  const today = startOfLocalDay(now);
+export function periodRange(period: SalePeriod | undefined, now: Date, from?: string, to?: string, tz = DEFAULT_TIMEZONE): DateRange {
+  const today = localDateOf(now, tz);
+  const day = (offset: number) => startOfDay(addDays(today, offset), tz);
   switch (period) {
     case 'today':
-      return { gte: today, lt: new Date(today.getTime() + DAY_MS) };
+      return { gte: day(0), lt: day(1) };
     case 'yesterday':
-      return { gte: new Date(today.getTime() - DAY_MS), lt: today };
+      return { gte: day(-1), lt: day(0) };
     case 'last7':
-      // Today plus the 6 previous days.
-      return { gte: new Date(today.getTime() - 6 * DAY_MS), lt: new Date(today.getTime() + DAY_MS) };
-    case 'month': {
-      const local = new Date(now.getTime() + OFFSET_MS);
-      const first = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) - OFFSET_MS;
-      const next = Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + 1, 1) - OFFSET_MS;
-      return { gte: new Date(first), lt: new Date(next) };
-    }
+      return { gte: day(-6), lt: day(1) };
+    case 'month':
+      return {
+        gte: startOfDay({ ...today, d: 1 }, tz),
+        lt: startOfDay(today.m === 12 ? { y: today.y + 1, m: 1, d: 1 } : { y: today.y, m: today.m + 1, d: 1 }, tz),
+      };
     case 'custom': {
       const range: DateRange = {};
-      if (from) range.gte = localDateStart(from);
-      if (to) range.lt = new Date(localDateStart(to).getTime() + DAY_MS);
+      const f = parseLocalDate(from);
+      const t = parseLocalDate(to);
+      if (f) range.gte = startOfDay(f, tz);
+      if (t) range.lt = startOfDay(addDays(t, 1), tz);
       return range;
     }
     default:

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { apiFailure, zodFailure } from "@/lib/action-errors";
 import { api, ApiError } from "@/lib/api";
 import type { FormState } from "@/lib/types";
-import { formValues, storeSchema } from "@/lib/validation";
+import { formValues, storeSchema, STORE_TIMEZONES } from "@/lib/validation";
 
 /** Initial setup: creates the business, the first store and starts the 14-day trial. */
 export async function onboardingAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -29,7 +29,9 @@ export async function updateStoreAction(_prev: FormState, formData: FormData): P
   if (!parsed.success) return zodFailure(parsed.error, values);
 
   try {
-    await api("/stores/current", { method: "PUT", body: parsed.data });
+    const timezone = formData.get("timezone");
+    const body = typeof timezone === "string" && STORE_TIMEZONES.some(([tz]) => tz === timezone) ? { ...parsed.data, timezone } : parsed.data;
+    await api("/stores/current", { method: "PUT", body });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) redirect("/login");
     return apiFailure(error, values);

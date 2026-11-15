@@ -27,6 +27,7 @@ export interface Store {
   city: string;
   address: string | null;
   primaryColor: string;
+  timezone: string;
   logoUrl: string | null;
   updatedAt: string;
 }
@@ -396,5 +397,7 @@ export interface Receipt {
 
 export interface SalesSummary {
   today: { sales: number; total: string; units: number };
+  month: { sales: number; total: string; units: number };
+  lowStock: { total: number; items: { id: string; name: string; sku: string; stock: number; threshold: number; category: string | null; unique: boolean }[] };
   recent: { id: string; number: string; total: string; unitCount: number; paymentMethod: PaymentMethod; status: SaleStatus; createdAt: string }[];
 }

@@ -147,8 +147,7 @@ La API valida sus variables al arrancar ([env.validation.ts](apps/api/src/config
 
 **Frontend**: `/`, `/registro`, `/login`, `/recuperar-contrasena`, `/restablecer-contrasena`, `/onboarding`,
 `/dashboard` (+ `productos`, `productos/nuevo`, `productos/[id]`, `productos/[id]/editar`, `productos/categorias`,
-`inventario`, `inventario/movimientos`, `suscripcion`, `configuracion`, `cuenta`, `mas`; `reportes`
-aparece como "En desarrollo"). Mobile first: en el celular hay barra inferior y en escritorio una barra lateral.
+`inventario`, `inventario/movimientos`, `suscripcion`, `configuracion`, `cuenta`, `mas` y `reportes`). Mobile first: en el celular hay barra inferior y en escritorio una barra lateral.
 
 ### Costo estimado de la IA
 
@@ -215,6 +214,63 @@ solicitudes) y `GET /dashboard/sales-summary`. Documentados en Swagger.
 
 **Frontend**: `/dashboard/ventas/nueva`, `/dashboard/ventas`, `/dashboard/ventas/[id]`, `/dashboard/ventas/[id]/boleta`,
 `/boleta/[token]` (pública) y las rutas proxy `/api/sales/[id]/receipt-pdf` y `/api/receipts/[token]/pdf`.
+
+## Arquitectura (Etapa 4: reportes, estadísticas y análisis de ventas)
+
+**Periodos y zona horaria**
+- Hoy, ayer, esta semana, semana anterior, últimos 7 días, esta quincena (1-15 / 16-fin de mes), quincena anterior,
+  este mes, mes anterior, últimos 30 días, este año y personalizado (inicio ≤ fin, máximo 2 años).
+- Las fechas se guardan en UTC y los días se calculan en la zona horaria de la tienda (`stores.timezone`, por defecto
+  `America/La_Paz`, editable en Configuración), sin depender de la zona del servidor. Los filtros se aplican en PostgreSQL.
+- **Comparación**: con el periodo anterior equivalente. Si el periodo está en curso se compara el mismo tiempo
+  transcurrido (este mes hasta hoy a esta hora vs. el mes anterior hasta el mismo día y hora). Si el anterior es 0
+  se muestra "Sin base de comparación" en lugar de un porcentaje infinito.
+
+**Indicadores**: total vendido, ventas, prendas, ticket promedio (total / ventas, redondeo al centavo), descuentos
+(por prenda + general, cada uno una vez). Las ventas anuladas nunca suman; se informan aparte. Todo en centavos enteros.
+
+**Costos históricos y ganancia bruta estimada**
+- Cada línea de venta guarda `unit_cost` (precio de compra al momento de vender), `net_total` (total de la línea
+  después de repartir el descuento general; la suma por venta es exactamente el total) y la categoría al vender.
+  Cambiar después el precio de compra no altera ventas pasadas.
+- Ganancia bruta estimada = ventas netas − costo de compra registrado. Las prendas sin costo **no** se toman como
+  costo cero: se excluyen, se informan (unidades e ingresos sin costo) y el resultado se marca como parcial. No incluye
+  gastos, impuestos ni comisiones.
+- La migración rellena `net_total` con la regla del API a partir de los montos guardados y la categoría actual; los
+  costos de ventas anteriores quedan vacíos porque no hay registro verificable del costo de ese momento.
+
+**Reportes**: `/dashboard/reportes` (indicadores, evolución, productos, categorías, métodos de pago, inventario),
+`/reportes/ventas` (tabla paginada en el backend con filtros por método, vendedor, estado y número, y orden por fecha),
+`/reportes/productos` (ranking por prendas o ingresos, menos vendidos, variantes, categorías, ganancia por producto) y
+`/reportes/inventario` (activos, unidades, agotados, stock bajo con umbral configurable, valor a costo y a precio de
+venta, movimientos del periodo). El periodo se conserva al cambiar de vista. Las prendas únicas (talla única que solo
+recibió 1 unidad) no cuentan como stock bajo salvo que se pida.
+
+**Gráficos**: Recharts. Barras del periodo con línea punteada del periodo anterior (mismo eje), rankings horizontales
+de un solo color con etiquetas directas, tooltips, estados vacíos y vista de tabla. Agrupación por hora (1 día), día
+(≤ 62 días), semana o mes. Colores validados para daltonismo y contraste: `#6C4CF5` (actual) y `#D63C74` (anterior).
+
+**Exportaciones**: Excel (ExcelJS en streaming, lotes por cursor, importes numéricos con formato Bs, fechas locales,
+totales, filtros y protección contra inyección de fórmulas) y PDF (pdfkit, A4, tablas paginadas, totales, gráfico de
+barras, numeración de páginas; máximo 2.000 filas, el detalle completo va en Excel). Mismos filtros y permisos que la
+pantalla; el navegador descarga por `/api/reports/export` con la cookie de sesión.
+
+**Planes y roles**: los reportes básicos (indicadores, tabla de ventas, conteos de inventario) están en todos los planes
+y siguen legibles con la suscripción vencida. Los avanzados (ganancia, comparación, gráficos, productos, valor del
+inventario, movimientos y exportaciones) requieren `advancedReports` (Gratis durante la prueba, Pro y Premium); la API
+responde `FEATURE_NOT_IN_PLAN` o `SUBSCRIPTION_INACTIVE`. Solo propietario y administrador ven reportes
+(`FORBIDDEN_ROLE` para vendedores). No hay reportes por sucursal todavía.
+
+**Endpoints**: `GET /reports/summary`, `/reports/sales`, `/reports/inventory`, `/reports/products`,
+`/reports/sales-chart`, `/reports/categories`, `/reports/payment-methods`, `/reports/export/excel`,
+`/reports/export/pdf` y `GET /dashboard/sales-summary` (hoy, mes, últimas ventas y stock bajo). La comparación va
+dentro de `/reports/summary`. Documentados en Swagger.
+
+**Organización del código**: API `apps/api/src/reports` con servicios por responsabilidad (contexto y periodo,
+estadísticas de ventas, tabla de ventas, productos, inventario, inicio, exportación Excel/PDF) y lógica pura
+probada sin base de datos (`report-periods`, `report-spans`, `report-buckets`, `report-math`, `common/zoned-time`).
+Web: `src/types/reports.ts` (tipos), `src/config/reports.ts` (declaraciones), `src/lib/reports.ts` (funciones puras),
+`src/services/reports.ts` (I/O), `src/components/reports/*` (presentación) y páginas que solo componen.
 
 ## Desarrollo con Docker (recomendado)
 
@@ -323,6 +379,11 @@ Las pruebas e2e cubren:
   vendedores simultáneos, 8 ventas simultáneas con números consecutivos únicos, *rollback* completo, productos
   archivados, boleta JSON/PDF y enlace público revocable, anulación concurrente con restitución de stock,
   permisos por rol, historial con filtros y paginación, aislamiento entre tiendas y suscripción vencida.
+- **Etapa 4:** reportes sin ventas, totales/descuentos/ticket/prendas contra las ventas guardadas, exclusión de
+  anuladas, costos históricos (cambiar el precio de compra no altera ventas pasadas), ganancia con costos faltantes,
+  límites de día/semana/quincena/mes en la zona de la tienda, periodo personalizado, comparación, ranking de productos,
+  métodos de pago, inventario y stock bajo, Excel (números, totales, anti-fórmulas) y PDF, restricciones por plan y rol,
+  aislamiento entre tiendas y 20.000 ventas sintéticas (consultas < 3 s, Excel en streaming).
 
 En las pruebas de créditos, el modelo de visión se reemplaza por un **doble de prueba**: se prueba la lógica real de
 créditos y no se simula a Claude. La llamada real a Claude tiene su propia prueba, que solo se ejecuta con clave:
@@ -340,10 +401,11 @@ Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
 - Modelos: `User`, `Session`, `PasswordResetToken`, `Tenant`, `TenantMembership`, `Store`, `Plan`, `Subscription`,
   `SubscriptionUsage`, `TrialGrant` y `PlanChangeRequest` (Etapa 1); `Category`, `Tag`, `ProductTag`, `Product`,
   `ProductVariant`, `ProductImage`, `InventoryMovement` y `AiAnalysis` (Etapa 2); `Sale`, `SaleItem` y
-  `SaleCancellation` (Etapa 3). Todos con claves foráneas,
+  `SaleCancellation` (Etapa 3); costos históricos, total neto y categoría en `SaleItem` y zona horaria en `Store`
+  (Etapa 4). Todos con claves foráneas,
   índices (incluidos índices trigram `pg_trgm` para la búsqueda) y restricciones `CHECK`.
 - Migraciones: `20261115015333_init_tenancy_and_subscriptions`, `20261115030329_catalog_inventory_ai`,
-  `20261115040424_sale_movement_types` y `20261115040539_sales_pos_receipts`. Desde la segunda solo agregan tablas,
+  `20261115040424_sale_movement_types`, `20261115040539_sales_pos_receipts` y `20261115120000_reports_costs_timezone`. Desde la segunda solo agregan tablas,
   valores de enum, columnas con valor por defecto o nulas (`tenants.product_seq`, `tenants.sale_seq`,
   `inventory_movements.sale_id`) y restricciones, sin cambios destructivos. Los valores nuevos del enum de
   movimientos van en una migración aparte porque PostgreSQL no permite usarlos en la misma transacción que los crea.
@@ -498,6 +560,8 @@ Variables de entorno de staging (distintas de producción, **otra contraseña**)
 | @aws-sdk/client-s3 + s3-request-presigner (Etapa 2) | 3.1169.0 |
 | sharp (Etapa 2) | 0.35.5 |
 | pdfkit (Etapa 3) | 0.20.2 |
+| exceljs (Etapa 4; `uuid` forzado a 11.1.1 por `overrides`) | 4.4.0 |
+| recharts (Etapa 4) | 3.10.1 |
 | zod (web y api) | 4.6.7 |
 | @nestjs/throttler / @node-rs/argon2 (Etapa 1) | 6.7.1 / 2.2.2 |
 | SeaweedFS (S3 local, solo desarrollo) | 4.53 |

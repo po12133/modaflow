@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
 import { Trim, TrimToNull } from '../common/validation.js';
 import { HEX_COLOR, NormalizeWhatsapp, UppercaseHex, WHATSAPP_E164, WHATSAPP_MESSAGE } from './store-fields.js';
 
@@ -44,8 +44,28 @@ export class StoreFieldsDto {
   primaryColor!: string;
 }
 
+/** Time zones offered for business days in reports (America/La_Paz by default). */
+export const STORE_TIMEZONES = [
+  'America/La_Paz',
+  'America/Lima',
+  'America/Bogota',
+  'America/Guayaquil',
+  'America/Caracas',
+  'America/Santiago',
+  'America/Asuncion',
+  'America/Argentina/Buenos_Aires',
+  'America/Montevideo',
+  'America/Sao_Paulo',
+  'America/Mexico_City',
+] as const;
+
 /** Full replacement of the editable fields (PUT /stores/current). */
-export class UpdateStoreDto extends StoreFieldsDto {}
+export class UpdateStoreDto extends StoreFieldsDto {
+  @ApiPropertyOptional({ enum: STORE_TIMEZONES, description: 'Zona horaria de la tienda (se conserva si se omite)' })
+  @IsOptional()
+  @IsIn(STORE_TIMEZONES, { message: 'Elige una zona horaria de la lista.' })
+  timezone?: string;
+}
 
 export class StoreDto {
   @ApiProperty() id!: string;
@@ -56,6 +76,7 @@ export class StoreDto {
   @ApiProperty() city!: string;
   @ApiProperty({ nullable: true, type: String }) address!: string | null;
   @ApiProperty() primaryColor!: string;
+  @ApiProperty({ example: 'America/La_Paz' }) timezone!: string;
   @ApiProperty({ nullable: true, type: String, description: 'Pendiente hasta configurar almacenamiento de archivos' })
   logoUrl!: string | null;
   @ApiProperty() updatedAt!: Date;

@@ -4,6 +4,7 @@ import { Check, ImageOff } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, TextAreaField, TextField } from "@/components/form";
 import type { FormState, Store } from "@/lib/types";
+import { STORE_TIMEZONES } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 
 const COLOR_PRESETS = [
@@ -21,7 +22,7 @@ type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
 interface StoreFormProps {
   action: Action;
-  store?: Pick<Store, "name" | "description" | "whatsapp" | "city" | "address" | "primaryColor">;
+  store?: Pick<Store, "name" | "description" | "whatsapp" | "city" | "address" | "primaryColor"> & { timezone?: string };
   submitLabel: string;
   pendingText?: string;
 }
@@ -90,6 +91,25 @@ export function StoreForm({ action, store, submitLabel, pendingText }: StoreForm
         placeholder="Ej. Av. Heroínas 123"
         state={state}
       />
+
+      {store?.timezone && (
+        <Field label="Zona horaria" name="timezone" state={state} hint="Define el inicio y fin de cada día en tus reportes.">
+          {(a11y) => (
+            <select
+              {...a11y}
+              name="timezone"
+              defaultValue={state.values?.timezone ?? store.timezone}
+              className="h-11 w-full rounded-xl border border-input bg-card px-3 text-base md:text-sm"
+            >
+              {STORE_TIMEZONES.map(([tz, label]) => (
+                <option key={tz} value={tz}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+      )}
 
       <Field label="Color principal" name="primaryColor" state={state} hint="Se usará en tu catálogo y documentos.">
         {(a11y) => (

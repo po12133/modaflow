@@ -152,6 +152,8 @@ model Store {
   primaryColor String   @default("#6C4CF5") @map("primary_color") @db.Char(7)
   /// Pending until durable object storage is configured.
   logoUrl      String?  @map("logo_url") @db.VarChar(500)
+  /// IANA time zone used for business days in reports (e.g. America/La_Paz).
+  timezone     String   @default("America/La_Paz") @db.VarChar(64)
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -521,6 +523,7 @@ model InventoryMovement {
 
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId, createdAt])
+  @@index([tenantId, type, createdAt])
   @@index([variantId, createdAt])
   @@index([productId, createdAt])
   @@index([saleId])
@@ -662,6 +665,13 @@ model SaleItem {
   finalUnitPrice Decimal       @map("final_unit_price") @db.Decimal(12, 2)
   /// finalUnitPrice x quantity.
   lineTotal      Decimal       @map("line_total") @db.Decimal(12, 2)
+  /// lineTotal minus this line's share of the general discount (shares add up to sale.total).
+  netTotal       Decimal       @map("net_total") @db.Decimal(12, 2)
+  /// Purchase cost per unit at the time of sale. Null when the product had no cost registered.
+  unitCost       Decimal?      @map("unit_cost") @db.Decimal(12, 2)
+  /// Category at the time of sale (snapshot for historical reports).
+  categoryId     String?       @map("category_id") @db.Uuid
+  categoryName   String?       @map("category_name") @db.VarChar(60)
 
   sale    Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
   product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -670,6 +680,7 @@ model SaleItem {
   @@index([saleId])
   @@index([tenantId, productId])
   @@index([variantId])
+  @@index([tenantId, categoryId])
   @@map("sale_items")
 }
 

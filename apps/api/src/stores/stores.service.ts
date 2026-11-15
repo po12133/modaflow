@@ -12,6 +12,7 @@ export const STORE_SELECT = {
   city: true,
   address: true,
   primaryColor: true,
+  timezone: true,
   logoUrl: true,
   updatedAt: true,
 } as const;
@@ -43,6 +44,7 @@ export class StoresService {
         city: dto.city,
         address: dto.address ?? null,
         primaryColor: dto.primaryColor,
+        ...(dto.timezone ? { timezone: dto.timezone } : {}),
       },
     });
     if (result.count === 0) throw new AppError(HttpStatus.NOT_FOUND, 'STORE_NOT_FOUND', 'No se encontró la tienda.');

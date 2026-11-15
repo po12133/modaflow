@@ -124,6 +124,15 @@ export function computeSale(lines: LineInput[], general?: DiscountInput | null):
   };
 }
 
+export function allocateGeneralDiscount(lineTotalsCents: number[], discountCents: number): number[] {
+  const linesTotal = lineTotalsCents.reduce((s, c) => s + c, 0);
+  if (discountCents <= 0 || linesTotal === 0) return [...lineTotalsCents];
+  const shares = lineTotalsCents.map((c) => Math.floor((discountCents * c) / linesTotal));
+  let leftover = discountCents - shares.reduce((s, c) => s + c, 0);
+  for (let i = 0; i < shares.length && leftover > 0; i++, leftover--) shares[i]! += 1;
+  return lineTotalsCents.map((c, i) => c - shares[i]!);
+}
+
 /** Change for cash payments. Received must cover the total. */
 export function cashChange(totalCents: number, received: string | null | undefined): { receivedCents: number; changeCents: number } | null {
   if (received == null || received === '') return null;

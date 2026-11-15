@@ -30,5 +30,10 @@
     "@scarf/scarf": false,
     "esbuild": false
   },
-  "packageManager": "npm@11.21.2"
+  "packageManager": "npm@11.21.2",
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
+  }
 }

@@ -31,6 +31,9 @@ export interface LockedVariant {
   productName: string;
   /** Current sale price as a decimal string ("69.50"). */
   salePrice: string;
+  purchasePrice: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
 }
 
 export interface StockChange {
@@ -109,13 +112,17 @@ export class InventoryService {
   async lockVariants(tx: Prisma.TransactionClient, tenantId: string, variantIds: string[]): Promise<Map<string, LockedVariant>> {
     const ids = [...new Set(variantIds)];
     if (ids.length === 0) return new Map();
-    const products = await tx.$queryRaw<{ id: string; status: string; name: string; sale_price: string }[]>`
-      SELECT p.id, p.status, p.name, p.sale_price::text AS sale_price
+    const products = await tx.$queryRaw<
+      { id: string; status: string; name: string; sale_price: string; purchase_price: string | null; category_id: string | null; category_name: string | null }[]
+    >`
+      SELECT p.id, p.status, p.name, p.sale_price::text AS sale_price, p.purchase_price::text AS purchase_price,
+             c.id AS category_id, c.name AS category_name
       FROM products p
+      LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.tenant_id = ${tenantId}::uuid
         AND p.id IN (SELECT v.product_id FROM product_variants v WHERE v.tenant_id = ${tenantId}::uuid AND v.id = ANY(${ids}::uuid[]))
       ORDER BY p.id
-      FOR UPDATE`;
+      FOR UPDATE OF p`;
     const variants = await tx.$queryRaw<{ id: string; product_id: string; stock: number; sku: string; size: string | null; color: string | null }[]>`
       SELECT v.id, v.product_id, v.stock, v.sku, v.size, v.color
       FROM product_variants v
@@ -136,6 +143,9 @@ export class InventoryService {
         productStatus: p.status,
         productName: p.name,
         salePrice: p.sale_price,
+        purchasePrice: p.purchase_price,
+        categoryId: p.category_id,
+        categoryName: p.category_name,
       });
     }
     return result;
