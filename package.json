@@ -1,0 +1,33 @@
+{
+  "name": "modaflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ModaFlow monorepo (Next.js + NestJS + PostgreSQL)",
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
+  "engines": {
+    "node": ">=22.12",
+    "npm": ">=11.21"
+  },
+  "scripts": {
+    "dev:web": "npm run dev -w @modaflow/web",
+    "dev:api": "npm run start:dev -w @modaflow/api",
+    "build": "npm run build -w @modaflow/api && npm run build -w @modaflow/web",
+    "build:web": "npm run build -w @modaflow/web",
+    "build:api": "npm run build -w @modaflow/api",
+    "lint": "npm run lint -w @modaflow/web && npm run lint -w @modaflow/api",
+    "prisma:generate": "npm run prisma:generate -w @modaflow/api",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy -w @modaflow/api",
+    "docker:dev": "docker compose -f deploy/development/compose.yaml --env-file .env up -d --build",
+    "docker:dev:down": "docker compose -f deploy/development/compose.yaml --env-file .env down",
+    "docker:dev:logs": "docker compose -f deploy/development/compose.yaml --env-file .env logs -f"
+  },
+  "allowScripts": {
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true,
+    "@scarf/scarf": false
+  },
+  "packageManager": "npm@11.21.2"
+}

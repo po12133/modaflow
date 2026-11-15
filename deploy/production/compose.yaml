@@ -1,0 +1,99 @@
+# ModaFlow — production stack (Coolify, "Docker Compose" build pack).
+#
+# Coolify:
+#   Base Directory:          /deploy/production
+#   Docker Compose Location: /compose.yaml
+#   Domains (set per service in the Coolify UI):
+#     web -> https://modaflow.amicornios.com:3000
+#     api -> https://api.modaflow.amicornios.com:3001
+#
+# Build contexts point to the repository root (../..), so they resolve the same
+# whether the project directory is this folder or the compose file's folder.
+#
+# Local check from the repository root:
+#   docker compose -f deploy/production/compose.yaml --env-file .env config
+#
+# No ports are published: Coolify's proxy routes traffic to web/api, and
+# PostgreSQL is reachable only through the private network.
+name: modaflow
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-modaflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-modaflow}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - modaflow
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-modaflow}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://modaflow.amicornios.com}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      SWAGGER_PATH: ${SWAGGER_PATH:-docs}
+    expose:
+      - "3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - modaflow
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      target: runner
+      args:
+        # Inlined into the browser bundle at build time (public value).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.modaflow.amicornios.com}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - modaflow
+
+networks:
+  modaflow:
+    driver: bridge
+
+volumes:
+  postgres_data:

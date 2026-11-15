@@ -1,0 +1,96 @@
+# ModaFlow — local development stack (hot reload).
+#
+# From the repository root:
+#   docker compose -f deploy/development/compose.yaml up -d --build
+#
+# Optional overrides: pass the root .env with `--env-file .env` (see .env.example).
+# Each service only receives the variables listed explicitly below, so the web
+# container never sees database credentials. Defaults are for local development
+# only — never reuse them in production.
+name: modaflow-dev
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-modaflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-modaflow_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-modaflow}
+    ports:
+      # Bound to localhost only, for local DB clients (psql, Prisma Studio...).
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - modaflow
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      APP_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-modaflow}:${POSTGRES_PASSWORD:-modaflow_dev_password}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      SWAGGER_PATH: ${SWAGGER_PATH:-docs}
+      # Polling watchers: Docker Desktop bind mounts do not forward file events.
+      TSC_WATCHFILE: DynamicPriorityPolling
+      TSC_WATCHDIRECTORY: DynamicPriorityPolling
+    ports:
+      - "${API_HOST_PORT:-3001}:3001"
+    volumes:
+      - ../../apps/api/src:/app/apps/api/src
+      - ../../apps/api/prisma:/app/apps/api/prisma
+      - ../../apps/api/test:/app/apps/api/test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - modaflow
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      # Called from the browser, so it must be reachable from the host.
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      WATCH_POLL_INTERVAL_MS: ${WATCH_POLL_INTERVAL_MS:-1000}
+    ports:
+      - "${WEB_HOST_PORT:-3000}:3000"
+    volumes:
+      - ../../apps/web/src:/app/apps/web/src
+      - ../../apps/web/public:/app/apps/web/public
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - modaflow
+
+networks:
+  modaflow:
+    driver: bridge
+
+volumes:
+  postgres_data:

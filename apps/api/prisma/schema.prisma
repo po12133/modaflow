@@ -1,0 +1,13 @@
+// Prisma schema for ModaFlow.
+// Docs: https://pris.ly/d/prisma-schema
+//
+// No business models yet: they will be added in later development phases.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
