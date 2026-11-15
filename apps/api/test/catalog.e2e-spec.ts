@@ -575,7 +575,9 @@ describe.skipIf(!process.env['ANTHROPIC_API_KEY'])('Claude garment recognition (
       ANTHROPIC_MODEL: process.env['ANTHROPIC_MODEL'] ?? 'claude-opus-5-5',
       AI_TIMEOUT_MS: 90_000,
     });
-    const recognizer = new ClaudeGarmentRecognizer(config as never);
+    const model = process.env['ANTHROPIC_MODEL'] ?? 'claude-opus-5-5';
+    const integrations = { snapshot: () => ({ storage: null, email: null, ai: { apiKey: process.env['ANTHROPIC_API_KEY'] ?? '', model } }) };
+    const recognizer = new ClaudeGarmentRecognizer(integrations as never, config as never);
     const path = process.env['AI_TEST_IMAGE'];
     if (!path) throw new Error('Set AI_TEST_IMAGE to a garment photo to run the real Claude test.');
     const { readFileSync } = await import('node:fs');

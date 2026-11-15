@@ -70,6 +70,15 @@ services:
       APP_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://modaflow_app:${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      # Encrypts the S3, Claude and SMTP secrets saved from the admin panel. Never change it once in use.
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?SETTINGS_ENCRYPTION_KEY is required}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-ModaFlow}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://modaflow.amicornios.com}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
       SWAGGER_PATH: ${SWAGGER_PATH:-docs}
@@ -114,6 +123,15 @@ services:
       APP_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://modaflow_admin:${ADMIN_DB_PASSWORD:?ADMIN_DB_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      # Encrypts the S3, Claude and SMTP secrets saved from the admin panel. Never change it once in use.
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?SETTINGS_ENCRYPTION_KEY is required}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-ModaFlow}
       CORS_ORIGINS: ${ADMIN_WEB_URL:-https://admin.modaflow.amicornios.com}
       ADMIN_WEB_URL: ${ADMIN_WEB_URL:-https://admin.modaflow.amicornios.com}
       ADMIN_SESSION_TTL_HOURS: ${ADMIN_SESSION_TTL_HOURS:-8}

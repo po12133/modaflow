@@ -1,21 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SettingsPanel } from "@/components/settings-panels";
-import { getMe } from "@/lib/dal";
 import { searchParam as one } from "@modaflow/ui/lib/search-params";
 import { cn } from "@modaflow/ui/lib/utils";
-import { getPlatformSettings } from "@/services/admin";
+import { IntegrationsPanel } from "@/components/integrations/integrations-panel";
+import { SettingsPanel } from "@/components/settings-panels";
+import { INTEGRATION_TABS } from "@/config/integrations";
+import { getMe } from "@/lib/dal";
+import { getIntegrations, getPlatformSettings } from "@/services/admin";
 
 export const metadata: Metadata = { title: "Configuración" };
 
 export const instant = false;
 
-const TABS: [string, string][] = [["general", "General"], ["suscripciones", "Suscripciones"], ["pagos", "Pagos"], ["notificaciones", "Notificaciones"]];
+const TABS: [string, string][] = [
+  ["general", "General"],
+  ["suscripciones", "Suscripciones"],
+  ["pagos", "Pagos"],
+  ["notificaciones", "Notificaciones"],
+  ["almacenamiento", "Almacenamiento"],
+  ["ia", "IA (Claude)"],
+  ["correo", "Correo"],
+];
 
 export default async function SettingsPage({ searchParams }: PageProps<"/configuracion">) {
   const sp = await searchParams;
   const tab = TABS.some(([k]) => k === one(sp.tab)) ? one(sp.tab)! : "general";
-  const [settings, me] = await Promise.all([getPlatformSettings(), getMe()]);
+  const integration = INTEGRATION_TABS[tab];
+  const me = await getMe();
+  const canEdit = me?.role === "SUPERADMIN";
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-extrabold tracking-tight">Configuración</h1>
@@ -30,7 +42,11 @@ export default async function SettingsPage({ searchParams }: PageProps<"/configu
           ))}
         </ul>
       </nav>
-      <SettingsPanel key={tab} tab={tab} s={settings} canEdit={me?.role === "SUPERADMIN"} />
+      {integration ? (
+        <IntegrationsPanel section={integration} view={await getIntegrations()} canEdit={canEdit} />
+      ) : (
+        <SettingsPanel key={tab} tab={tab} s={await getPlatformSettings()} canEdit={canEdit} />
+      )}
     </div>
   );
 }

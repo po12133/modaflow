@@ -71,6 +71,8 @@ Usa una contraseña segura para URL (letras y números), por ejemplo `openssl ra
 | `SCHEDULER_ENABLED` | privada | admin-api | `false` desactiva el job de vencimientos en esa réplica (por defecto activo) |
 | `APP_DB_PASSWORD` | **secreta** | migrate, api | Contraseña del usuario de PostgreSQL `modaflow_app` (API de suscriptores). Obligatoria en staging/producción, mínimo 16 caracteres |
 | `ADMIN_DB_PASSWORD` | **secreta** | migrate, admin-api | Contraseña del usuario de PostgreSQL `modaflow_admin` (API admin). Obligatoria en staging/producción, mínimo 16 caracteres |
+| `SETTINGS_ENCRYPTION_KEY` | **secreta** | api, admin-api | 64 caracteres hex (`openssl rand -hex 32`). Cifra las llaves guardadas desde el panel. Obligatoria en staging/producción. No cambiarla una vez en uso |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM_EMAIL` / `SMTP_FROM_NAME` | privada (contraseña **secreta**) | api, admin-api | Correo por defecto; lo configurado en el panel tiene prioridad |
 | `ADMIN_WEB_URL` | privada | admin-api | URL pública del panel admin: enlaces de acceso del equipo y origen permitido |
 | `ADMIN_SESSION_TTL_HOURS` / `ADMIN_SESSION_IDLE_MINUTES` | privada | admin-api | Duración máxima (8 h) e inactividad máxima (60 min) de la sesión del equipo |
 | `ADMIN_API_INTERNAL_URL` | privada | admin-web | URL interna de la API admin (la fija cada compose) |
@@ -91,8 +93,9 @@ La API valida sus variables al arrancar ([env.validation.ts](apps/api/src/config
   (`@nestjs/throttler`: 10 intentos/min en login y registro, 5 cada 15 min en recuperación).
 - CSRF: las Server Actions de Next verifican el `Origin`, y la API rechaza peticiones de navegador con un `Origin`
   que no esté en `CORS_ORIGINS` (`OriginGuard`).
-- Recuperación de contraseña: token de un solo uso (60 min). **Aún no hay SMTP**: en desarrollo el enlace se
-  escribe en los logs de `api`; en producción solo se registra que el correo no se envió.
+- Recuperación de contraseña: token de un solo uso (60 min), enviado por correo (SMTP configurado en el panel admin
+  o en `SMTP_*`). Sin SMTP, en desarrollo el enlace se escribe en los logs de `api`; en producción solo se registra
+  que el correo no se envió.
 
 **Multiempresa**
 - `Tenant` (negocio) → `Store` (tiendas) y `TenantMembership` (usuario + rol `OWNER`/`ADMIN`/`SELLER`).
@@ -370,8 +373,8 @@ próximo. La autorización **no depende del job**: `EntitlementsService` calcula
 El job corre en `admin-api`; `SCHEDULER_ENABLED=false` lo desactiva en una réplica.
 
 **Notificaciones**: dentro de la plataforma (`/dashboard/notificaciones` y `/notificaciones` del panel admin), deduplicadas con
-`dedupe_key` único. El correo queda **pendiente**: no hay SMTP configurado, los avisos se marcan `SKIPPED` y
-[mail.service.ts](apps/api/src/mail/mail.service.ts) es el único punto a completar.
+`dedupe_key` único. Con SMTP configurado (panel admin → Configuración → Correo) los avisos también se envían por
+correo (en copia oculta) desde el job de `admin-api`; sin SMTP se marcan `SKIPPED`.
 
 **Auditoría** (`/auditoria` del panel admin): `admin.audit_logs` es de solo inserción (un *trigger* de PostgreSQL rechaza
 `UPDATE` y `DELETE`). Guarda actor, acción, entidad, antes/después, motivo, IP y resultado; elimina claves sensibles
@@ -379,8 +382,8 @@ El job corre en `admin-api`; `SCHEDULER_ENABLED=false` lo desactiva en una répl
 pagos exige motivo.
 
 **Configuración general** (`platform_settings`, fila única): nombre, contacto, zona horaria, días de prueba, aviso y
-conservación, datos de pago y correos de aviso. Los secretos de infraestructura (base de datos, S3, Claude,
-autenticación) solo existen en variables de entorno y no se pueden ver ni editar desde el navegador.
+conservación, datos de pago y correos de aviso. S3, Claude y SMTP se editan en sus propias pestañas (ver
+"Integraciones desde el panel"). La contraseña de la base de datos y la clave de cifrado solo existen en el servidor.
 
 **Fuera de alcance**: pasarelas de pago, cobro recurrente automático, facturación fiscal, WhatsApp Business API,
 acceso a la cuenta de un suscriptor (impersonación) y borrado permanente de negocios.
@@ -456,9 +459,28 @@ modaflow…        web ───────(red privada)──► api ───
 - **Código compartido**: `packages/ui` (`@modaflow/ui`) contiene componentes base (shadcn), estilos, formularios,
   formatos, gráficos, etiquetas de facturación y tipos comunes. Ambas webs lo compilan con `transpilePackages`.
 
+**Integraciones desde el panel** (Configuración → Almacenamiento, IA (Claude), Correo). Por decisión del dueño del
+producto, S3, la llave de Claude y el SMTP se pueden cambiar desde el panel en todos los entornos, con estas defensas:
+
+- Tabla `integration_settings` (fila única). Cada campo vacío usa su variable de entorno (`S3_*`, `ANTHROPIC_*`,
+  `SMTP_*`), así un despliegue nuevo funciona sin tocar el panel.
+- Las llaves se guardan **cifradas** (AES-256-GCM) con `SETTINGS_ENCRYPTION_KEY`, que solo vive en el servidor. Son de
+  **solo escritura**: la API nunca las devuelve; el panel muestra "guardada · termina en ••ab12" y permite reemplazarlas
+  o quitarlas. Una copia de la base no expone las llaves.
+- Solo superadministradores, **repitiendo su contraseña** para probar, guardar o restablecer (límite 10/min). Soporte
+  solo ve el estado. Cada cambio y cada prueba quedan en la auditoría con los nombres de los campos, nunca los valores.
+- **Probar conexión** sin guardar: S3 sube y borra un archivo; Claude valida llave y modelo con `models.retrieve` (sin
+  consumir tokens); SMTP verifica la conexión y envía un correo de prueba a quien lo pide.
+- Ambas APIs leen la configuración con caché de 15 s: un cambio llega a las tiendas en menos de 15 segundos sin
+  reiniciar. La API de suscriptores solo puede **leer** esa tabla (permiso de PostgreSQL).
+- Si se pierde o cambia `SETTINGS_ENCRYPTION_KEY`, las llaves guardadas no se pueden leer: esa sección se desactiva, el
+  panel lo avisa y hay que volver a ingresarlas. **No cambies esa clave una vez en uso.**
+
 **Endpoints de la API admin** (además de los de administración de la Etapa 6): `POST /auth/login`, `POST /auth/logout`,
 `GET /auth/me`, `POST /auth/setup-password` (enlace de un solo uso), `POST /auth/password` (cambio propio),
-`GET|POST /admin/staff`, `POST /admin/staff/:id/setup-link` y `PATCH /admin/staff/:id` (rol o estado, con motivo).
+`GET|POST /admin/staff`, `POST /admin/staff/:id/setup-link`, `PATCH /admin/staff/:id` (rol o estado, con motivo),
+`GET /admin/integrations`, `PATCH /admin/integrations/storage|ai|email`, `POST /admin/integrations/storage|ai|email/test`
+y `POST /admin/integrations/:section/reset`.
 
 ## Desarrollo con Docker (recomendado)
 
@@ -708,10 +730,12 @@ docker compose -f deploy/production/compose.yaml --env-file .env down
    | `APP_DB_PASSWORD` | contraseña del usuario `modaflow_app` (obligatoria, URL-safe, distinta de las otras) |
    | `ADMIN_DB_PASSWORD` | contraseña del usuario `modaflow_admin` (obligatoria, URL-safe, distinta de las otras) |
    | `ADMIN_WEB_URL` | `https://admin.modaflow.amicornios.com` |
+   | `SETTINGS_ENCRYPTION_KEY` | 64 caracteres hex (obligatoria; ya generada en `.env.coolify`). No cambiarla una vez en uso |
+   | `SMTP_*` | opcionales: valores por defecto del correo (también se configuran desde el panel) |
    | `NEXT_PUBLIC_API_URL` | `https://api.modaflow.amicornios.com` (se usa como build arg de `web`) |
    | `CORS_ORIGINS` | `https://modaflow.amicornios.com` |
    | `SWAGGER_ENABLED` | `false` (o `true` si quieres Swagger público) |
-   | `ANTHROPIC_API_KEY` | clave de la API de Claude (secreta). Sin ella, la IA queda deshabilitada |
+   | `ANTHROPIC_API_KEY` | clave de la API de Claude (secreta). Opcional si se configura desde el panel admin |
    | `ANTHROPIC_MODEL` | `claude-opus-5-5` (o el modelo que elijas) |
    | `S3_ENDPOINT` | endpoint del proveedor S3 (vacío = AWS S3) |
    | `S3_REGION` | región (`auto` en Cloudflare R2) |

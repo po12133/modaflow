@@ -56,7 +56,7 @@ export function SettingsPanel({ tab, s, canEdit }: { tab: string; s: PlatformSet
           {STORE_TIMEZONES.map(([tz, label]) => <option key={tz} value={tz}>{label}</option>)}
         </select>
       </Field>
-      <p className="text-xs text-muted-foreground">Las claves de Claude, credenciales S3, contraseñas de base de datos y secretos de autenticación se configuran en variables de entorno, nunca desde el navegador.</p>
+      <p className="text-xs text-muted-foreground">Almacenamiento (S3), IA (Claude) y correo (SMTP) se configuran en sus pestañas, con las llaves cifradas. La contraseña de la base de datos y la clave de cifrado solo se cambian en el servidor.</p>
     </SettingsForm>
   );
 }

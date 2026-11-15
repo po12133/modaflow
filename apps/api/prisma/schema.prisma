@@ -1139,6 +1139,40 @@ model PlatformSettings {
   @@schema("public")
 }
 
+/// Integrations editable from the admin panel. Every field is optional: when
+/// null, the matching environment variable is used. Secrets are stored
+/// encrypted (AES-256-GCM, key in SETTINGS_ENCRYPTION_KEY) and never returned.
+model IntegrationSettings {
+  id                    Int      @id @default(1)
+  s3Endpoint            String?  @map("s3_endpoint") @db.VarChar(300)
+  s3PublicEndpoint      String?  @map("s3_public_endpoint") @db.VarChar(300)
+  s3Region              String?  @map("s3_region") @db.VarChar(40)
+  s3Bucket              String?  @map("s3_bucket") @db.VarChar(80)
+  s3ForcePathStyle      Boolean? @map("s3_force_path_style")
+  s3AccessKeyIdEnc      String?  @map("s3_access_key_id_enc")
+  s3AccessKeyIdHint     String?  @map("s3_access_key_id_hint") @db.VarChar(8)
+  s3SecretAccessKeyEnc  String?  @map("s3_secret_access_key_enc")
+  s3SecretAccessKeyHint String?  @map("s3_secret_access_key_hint") @db.VarChar(8)
+  anthropicApiKeyEnc    String?  @map("anthropic_api_key_enc")
+  anthropicApiKeyHint   String?  @map("anthropic_api_key_hint") @db.VarChar(8)
+  anthropicModel        String?  @map("anthropic_model") @db.VarChar(80)
+  smtpHost              String?  @map("smtp_host") @db.VarChar(200)
+  smtpPort              Int?     @map("smtp_port")
+  smtpSecure            Boolean? @map("smtp_secure")
+  smtpUser              String?  @map("smtp_user") @db.VarChar(200)
+  smtpPasswordEnc       String?  @map("smtp_password_enc")
+  smtpPasswordHint      String?  @map("smtp_password_hint") @db.VarChar(8)
+  smtpFromEmail         String?  @map("smtp_from_email") @db.VarChar(254)
+  smtpFromName          String?  @map("smtp_from_name") @db.VarChar(80)
+  updatedById           String?  @map("updated_by_id") @db.Uuid
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  updatedBy Staff? @relation(fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@map("integration_settings")
+  @@schema("public")
+}
+
 // ---------------------------------------------------------------------------
 // ModaFlow staff (schema "admin"). Separate from subscriber accounts: the
 // subscriber API database role has no access to this schema.
@@ -1179,6 +1213,7 @@ model Staff {
   subscriptionPeriods SubscriptionPeriod[]
   planVersions        PlanVersion[]
   settingsUpdates     PlatformSettings[]
+  integrationUpdates  IntegrationSettings[]
 
   @@map("staff")
   @@schema("admin")

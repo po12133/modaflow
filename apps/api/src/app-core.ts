@@ -1,6 +1,7 @@
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module.js';
+import { IntegrationsModule } from './integrations/integrations.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { StorageModule } from './storage/storage.module.js';
 
@@ -12,6 +13,7 @@ export function coreImports(validate: (config: Record<string, unknown>) => objec
       errorMessage: 'Demasiadas solicitudes. Espera un momento e intenta de nuevo.',
     }),
     PrismaModule,
+    IntegrationsModule,
     HealthModule,
     StorageModule,
   ];

@@ -51,7 +51,7 @@ export class NotificationsService {
     for (const n of pending) {
       try {
         const recipients = await this.recipients(n.audience, n.tenantId);
-        const status = await this.mail.sendNotification(recipients, n.title);
+        const status = await this.mail.sendNotification(recipients, n.title, n.body);
         await this.prisma.notification.update({ where: { id: n.id }, data: { emailStatus: status } });
       } catch (error) {
         this.logger.warn(`Notification email failed: ${String(error)}`);

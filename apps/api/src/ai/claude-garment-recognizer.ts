@@ -4,14 +4,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
 import { EnvironmentVariables } from '../config/env.validation.js';
+import { DEFAULT_AI_MODEL as DEFAULT_MODEL } from '../integrations/integration-config.js';
+import { IntegrationConfigService } from '../integrations/integration-config.service.js';
 import {
   GarmentRecognizer,
   RecognitionError,
   type RecognitionImage,
   type RecognitionResult,
 } from './garment-recognizer.js';
-
-export const DEFAULT_MODEL = 'claude-opus-5-5';
 
 /** Structured output: Spanish keys, matching the agreed JSON contract. No price/brand/fabric fields exist. */
 const GarmentSchema = z.object({
@@ -52,30 +52,39 @@ Reglas estrictas:
 /** Models that accept the server-side refusal fallback (`fallbacks: "default"`). */
 const SERVER_FALLBACK_MODELS = new Set(['claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5', 'claude-fable-5-2', 'claude-fable-5-1']);
 
-/** Claude-backed recognizer. The API key never leaves the backend. */
 @Injectable()
 export class ClaudeGarmentRecognizer extends GarmentRecognizer {
   private readonly logger = new Logger(ClaudeGarmentRecognizer.name);
-  private readonly client: Anthropic | null;
-  readonly model: string;
+  private readonly timeoutMs: number;
+  private cached: { apiKey: string; client: Anthropic } | null = null;
 
-  constructor(config: ConfigService<EnvironmentVariables, true>) {
+  constructor(
+    private readonly integrations: IntegrationConfigService,
+    config: ConfigService<EnvironmentVariables, true>,
+  ) {
     super();
-    // '' means unset (compose passes empty strings for optional variables).
-    const apiKey = config.get('ANTHROPIC_API_KEY', { infer: true }) || undefined;
-    this.model = config.get('ANTHROPIC_MODEL', { infer: true }) || DEFAULT_MODEL;
-    this.client = apiKey
-      ? new Anthropic({ apiKey, timeout: config.get('AI_TIMEOUT_MS', { infer: true }) ?? 60_000, maxRetries: 1 })
-      : null;
-    if (!apiKey) this.logger.warn('ANTHROPIC_API_KEY is not set: AI garment analysis is disabled.');
+    this.timeoutMs = config.get('AI_TIMEOUT_MS', { infer: true }) ?? 60_000;
   }
 
   get configured(): boolean {
-    return this.client !== null;
+    return this.integrations.snapshot().ai !== null;
+  }
+
+  get model(): string {
+    return this.integrations.snapshot().ai?.model ?? DEFAULT_MODEL;
+  }
+
+  private get client(): Anthropic | null {
+    const ai = this.integrations.snapshot().ai;
+    if (!ai) return null;
+    if (this.cached?.apiKey !== ai.apiKey) this.cached = { apiKey: ai.apiKey, client: new Anthropic({ apiKey: ai.apiKey, timeout: this.timeoutMs, maxRetries: 1 }) };
+    return this.cached.client;
   }
 
   async recognize(images: RecognitionImage[], storeCategories: string[]): Promise<RecognitionResult> {
-    if (!this.client) throw new RecognitionError('AI_UNAVAILABLE', 'AI is not configured', false);
+    const client = this.client;
+    const model = this.model;
+    if (!client) throw new RecognitionError('AI_UNAVAILABLE', 'AI is not configured', false);
 
     const content: Anthropic.Beta.BetaContentBlockParam[] = [
       ...images.map(
@@ -94,15 +103,15 @@ export class ClaudeGarmentRecognizer extends GarmentRecognizer {
 
     let response;
     try {
-      response = await this.client.beta.messages.parse({
-        model: this.model,
+      response = await client.beta.messages.parse({
+        model,
         max_tokens: 4096,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content }],
         // Simple extraction: low effort keeps it fast and inexpensive.
         output_config: { effort: 'low', format: betaZodOutputFormat(GarmentSchema) },
         // If a safety classifier declines, the API retries on a fallback model in the same call.
-        ...(SERVER_FALLBACK_MODELS.has(this.model)
+        ...(SERVER_FALLBACK_MODELS.has(model)
           ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const }
           : {}),
       });
@@ -145,11 +154,11 @@ export class ClaudeGarmentRecognizer extends GarmentRecognizer {
       return new RecognitionError('AI_UNAVAILABLE', 'rate limited', true);
     }
     if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
-      this.logger.error('Claude API rejected the credentials (check ANTHROPIC_API_KEY).');
+      this.logger.error('Claude API rejected the credentials (check the Claude API key in the admin panel or ANTHROPIC_API_KEY).');
       return new RecognitionError('AI_UNAVAILABLE', 'auth', false);
     }
     if (error instanceof Anthropic.BadRequestError || error instanceof Anthropic.NotFoundError) {
-      this.logger.error(`Claude API rejected the request (${error.status}): check ANTHROPIC_MODEL="${this.model}".`);
+      this.logger.error(`Claude API rejected the request (${error.status}): check the Claude model "${this.model}".`);
       return new RecognitionError('AI_UNAVAILABLE', 'bad request', false);
     }
     if (error instanceof Anthropic.APIConnectionError) {

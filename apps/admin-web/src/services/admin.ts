@@ -5,6 +5,7 @@ import { toQuery } from "@modaflow/ui/lib/query";
 import type { Paginated } from "@modaflow/ui/types/common";
 import type { AdminDashboard, AdminPaymentDetail, AdminPaymentPage, AdminPlan, AdminStatistics, AdminSubscriptionRow, AdminTenantDetail, AdminTenantRow, AdminUserRow, AuditRow, PlatformSettingsView } from "@/types/admin";
 import type { NotificationPage } from "@modaflow/ui/types/billing";
+import type { IntegrationsView } from "@/types/integrations";
 import type { StaffMember } from "@/types/staff";
 
 type Query = Record<string, string | number | undefined>;
@@ -23,3 +24,4 @@ export const getAdminAudit = (q: Query) => api<Paginated<AuditRow>>(`/admin/audi
 export const getAdminNotifications = (page: number) => api<NotificationPage>(`/admin/notifications?page=${page}`);
 export const getPlatformSettings = () => api<PlatformSettingsView>("/admin/settings");
 export const getStaff = () => api<StaffMember[]>("/admin/staff");
+export const getIntegrations = () => api<IntegrationsView>("/admin/integrations");

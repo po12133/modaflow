@@ -11,94 +11,87 @@ import { HttpStatus, Injectable, Logger, type OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { AppError } from '../common/app-error.js';
 import { EnvironmentVariables } from '../config/env.validation.js';
+import type { StorageConfig } from '../integrations/integration-config.js';
+import { IntegrationConfigService } from '../integrations/integration-config.service.js';
 
-/**
- * S3-compatible object storage (AWS S3, Cloudflare R2, MinIO...).
- * Objects are private: browsers only get short-lived signed URLs.
- * Nothing is ever written to the container filesystem.
- */
+interface Clients {
+  key: string;
+  client: S3Client;
+  signer: S3Client;
+  bucket: string;
+}
+
+export function s3Clients(cfg: StorageConfig): { client: S3Client; signer: S3Client } {
+  const base = { region: cfg.region, credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey }, forcePathStyle: cfg.forcePathStyle };
+  const publicEndpoint = cfg.publicEndpoint ?? cfg.endpoint;
+  return {
+    client: new S3Client({ ...base, ...(cfg.endpoint ? { endpoint: cfg.endpoint } : {}) }),
+    signer: new S3Client({ ...base, ...(publicEndpoint ? { endpoint: publicEndpoint } : {}) }),
+  };
+}
+
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
-  private readonly client: S3Client | null;
-  /** Client used only to sign URLs for browsers (may use a public endpoint). */
-  private readonly signer: S3Client | null;
-  private readonly bucket: string | null;
   private readonly signedUrlTtl: number;
   private readonly autoCreateBucket: boolean;
+  private clients: Clients | null = null;
 
-  constructor(config: ConfigService<EnvironmentVariables, true>) {
-    // '' means unset (compose passes empty strings for optional variables).
-    const str = (key: 'S3_BUCKET' | 'S3_ACCESS_KEY_ID' | 'S3_SECRET_ACCESS_KEY' | 'S3_ENDPOINT' | 'S3_PUBLIC_ENDPOINT' | 'S3_REGION') =>
-      config.get(key, { infer: true }) || undefined;
-    const bucket = str('S3_BUCKET');
-    const accessKeyId = str('S3_ACCESS_KEY_ID');
-    const secretAccessKey = str('S3_SECRET_ACCESS_KEY');
+  constructor(
+    private readonly integrations: IntegrationConfigService,
+    config: ConfigService<EnvironmentVariables, true>,
+  ) {
     this.signedUrlTtl = config.get('S3_SIGNED_URL_TTL_SECONDS', { infer: true }) ?? 3600;
     this.autoCreateBucket = config.get('S3_AUTO_CREATE_BUCKET', { infer: true }) ?? false;
-
-    if (!bucket || !accessKeyId || !secretAccessKey) {
-      this.client = this.signer = null;
-      this.bucket = null;
-      this.logger.warn('S3 storage is not configured (S3_BUCKET / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY): photo upload disabled.');
-      return;
-    }
-
-    const endpoint = str('S3_ENDPOINT');
-    const base = {
-      region: str('S3_REGION') ?? 'us-east-1',
-      credentials: { accessKeyId, secretAccessKey },
-      forcePathStyle: config.get('S3_FORCE_PATH_STYLE', { infer: true }) ?? true,
-    };
-    this.bucket = bucket;
-    this.client = new S3Client({ ...base, ...(endpoint ? { endpoint } : {}) });
-    const publicEndpoint = str('S3_PUBLIC_ENDPOINT') ?? endpoint;
-    this.signer = new S3Client({ ...base, ...(publicEndpoint ? { endpoint: publicEndpoint } : {}) });
   }
 
-  /** Development convenience (S3_AUTO_CREATE_BUCKET): creates the bucket if missing. */
   async onModuleInit(): Promise<void> {
-    if (!this.autoCreateBucket || !this.client || !this.bucket) return;
-    if (await this.ping()) return;
-    try {
-      await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }));
-      this.logger.log(`Created bucket "${this.bucket}"`);
-    } catch (error) {
-      this.logger.warn(`Could not create bucket "${this.bucket}": ${(error as Error).name}`);
+    await this.integrations.refresh();
+    const state = this.state();
+    if (!state) {
+      this.logger.warn('S3 storage is not configured (admin panel or S3_* variables): photo upload disabled.');
+      return;
     }
+    if (!this.autoCreateBucket || (await this.ping())) return;
+    try {
+      await state.client.send(new CreateBucketCommand({ Bucket: state.bucket }));
+      this.logger.log(`Created bucket "${state.bucket}"`);
+    } catch (error) {
+      this.logger.warn(`Could not create bucket "${state.bucket}": ${(error as Error).name}`);
+    }
+  }
+
+  private state(): Clients | null {
+    const cfg = this.integrations.snapshot().storage;
+    if (!cfg) return null;
+    const key = JSON.stringify(cfg);
+    if (this.clients?.key !== key) this.clients = { key, bucket: cfg.bucket, ...s3Clients(cfg) };
+    return this.clients;
   }
 
   get isConfigured(): boolean {
-    return this.client !== null;
+    return this.state() !== null;
   }
 
-  /** Throws STORAGE_NOT_CONFIGURED (503) when S3 credentials are missing. */
   assertConfigured(): void {
     this.require();
   }
 
-  private require(): { client: S3Client; signer: S3Client; bucket: string } {
-    if (!this.client || !this.signer || !this.bucket) {
+  private require(): Clients {
+    const state = this.state();
+    if (!state) {
       throw new AppError(
         HttpStatus.SERVICE_UNAVAILABLE,
         'STORAGE_NOT_CONFIGURED',
         'El almacenamiento de fotografías todavía no está configurado. Puedes registrar la prenda sin fotos.',
       );
     }
-    return { client: this.client, signer: this.signer, bucket: this.bucket };
+    return state;
   }
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
     const { client, bucket } = this.require();
-    await client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-        CacheControl: 'private, max-age=31536000, immutable',
-      }),
-    );
+    await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType, CacheControl: 'private, max-age=31536000, immutable' }));
   }
 
   async get(key: string): Promise<Buffer> {
@@ -109,28 +102,22 @@ export class StorageService implements OnModuleInit {
   }
 
   async deleteMany(keys: string[]): Promise<void> {
-    if (keys.length === 0 || !this.client || !this.bucket) return;
-    await this.client.send(
-      new DeleteObjectsCommand({
-        Bucket: this.bucket,
-        Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true },
-      }),
-    );
+    const state = this.state();
+    if (keys.length === 0 || !state) return;
+    await state.client.send(new DeleteObjectsCommand({ Bucket: state.bucket, Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true } }));
   }
 
-  /** Short-lived URL to read a private object. Returns null when storage is off. */
   async signedUrl(key: string): Promise<string | null> {
-    if (!this.signer || !this.bucket) return null;
-    return getSignedUrl(this.signer, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
-      expiresIn: this.signedUrlTtl,
-    });
+    const state = this.state();
+    if (!state) return null;
+    return getSignedUrl(state.signer, new GetObjectCommand({ Bucket: state.bucket, Key: key }), { expiresIn: this.signedUrlTtl });
   }
 
-  /** Connectivity probe (bucket reachable with the configured credentials). */
   async ping(): Promise<boolean> {
-    if (!this.client || !this.bucket) return false;
+    const state = this.state();
+    if (!state) return false;
     try {
-      await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      await state.client.send(new HeadBucketCommand({ Bucket: state.bucket }));
       return true;
     } catch {
       return false;
