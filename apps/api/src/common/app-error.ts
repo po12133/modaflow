@@ -42,7 +42,12 @@ export type AppErrorCode =
   | 'AI_NOT_CONFIGURED'
   | 'AI_UNAVAILABLE'
   | 'AI_INVALID_RESPONSE'
-  | 'ANALYSIS_IN_PROGRESS';
+  | 'ANALYSIS_IN_PROGRESS'
+  // Stage 3: sales
+  | 'SALE_NOT_FOUND'
+  | 'SALE_ALREADY_CANCELED'
+  | 'PRODUCT_UNAVAILABLE'
+  | 'RECEIPT_NOT_FOUND';
 
 export class AppError extends HttpException {
   constructor(

@@ -3,23 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ACCOUNT_NAV, isActive, itemActive, MAIN_NAV, MORE_ITEM } from "./nav-items";
+import { ACCOUNT_NAV, isActive, itemActive, MORE_ITEM, navItem } from "./nav-items";
 
 /** Mobile tab bar: Inicio · Inventario · [Vender] · Reportes · Más (as in the prototype). */
 export function BottomNav() {
   const pathname = usePathname();
-  const [home, inventory, sell, reports] = MAIN_NAV;
+  const sell = navItem("/dashboard/ventas/nueva");
+  const sales = navItem("/dashboard/ventas");
   const moreActive = isActive(pathname, MORE_ITEM.href) || ACCOUNT_NAV.some((i) => isActive(pathname, i.href));
-  const items = [home!, inventory!, sell!, reports!, MORE_ITEM];
+  const items = [navItem("/dashboard"), navItem("/dashboard/productos"), sell, navItem("/dashboard/reportes"), MORE_ITEM];
 
   return (
     <nav
       aria-label="Navegación principal"
-      className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 shadow-[0_-6px_20px_-14px_rgba(22,19,43,0.3)] backdrop-blur lg:hidden"
+      className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 shadow-[0_-6px_20px_-14px_rgba(22,19,43,0.3)] backdrop-blur lg:hidden print:hidden"
     >
       <ul className="mx-auto grid h-16 max-w-lg grid-cols-5 items-end px-1">
         {items.map((item) => {
-          const active = item === MORE_ITEM ? moreActive : itemActive(pathname, item);
+          // The sales history has no tab of its own on mobile: it lives under "Vender".
+          const active =
+            item === MORE_ITEM ? moreActive : itemActive(pathname, item) || (item === sell && itemActive(pathname, sales));
           const Icon = item.icon;
           const isMain = item === sell;
           return (

@@ -9,6 +9,8 @@ export const MOVEMENT_LABELS: Record<MovementType, string> = {
   MANUAL_OUT: "Salida manual",
   ADJUSTMENT_IN: "Ajuste positivo",
   ADJUSTMENT_OUT: "Ajuste negativo",
+  SALE: "Venta",
+  SALE_CANCEL: "Anulación de venta",
 };
 
 const timeFmt = new Intl.DateTimeFormat("es-BO", { hour: "2-digit", minute: "2-digit", timeZone: "America/La_Paz" });

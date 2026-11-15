@@ -115,7 +115,7 @@ export interface FormState {
 // ---------------------------------------------------------------------------
 
 export type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
-export type MovementType = "INITIAL" | "STOCK_IN" | "MANUAL_OUT" | "ADJUSTMENT_IN" | "ADJUSTMENT_OUT";
+export type MovementType = "INITIAL" | "STOCK_IN" | "MANUAL_OUT" | "ADJUSTMENT_IN" | "ADJUSTMENT_OUT" | "SALE" | "SALE_CANCEL";
 
 export interface Category {
   id: string;
@@ -258,4 +258,143 @@ export interface AiAnalysis {
   suggestion: GarmentSuggestion | null;
   creditsCharged: number;
   usage: { limit: number; used: number; remaining: number };
+}
+
+// ---------------------------------------------------------------------------
+// Stage 3: point of sale, sales and receipts
+// ---------------------------------------------------------------------------
+
+export type PaymentMethod = "CASH" | "QR" | "TRANSFER" | "OTHER";
+export type DiscountType = "PERCENT" | "AMOUNT";
+export type SaleStatus = "COMPLETED" | "CANCELED";
+
+export interface Discount {
+  type: DiscountType;
+  value: string;
+}
+
+export interface PosProduct {
+  id: string;
+  name: string;
+  sku: string;
+  salePrice: string;
+  totalStock: number;
+  color: string | null;
+  category: { id: string; name: string } | null;
+  image: ProductImage | null;
+  variants: Variant[];
+}
+
+export interface SalePreview {
+  items: {
+    variantId: string;
+    productName: string;
+    size: string | null;
+    color: string | null;
+    available: number;
+    quantity: number;
+    unitPrice: string;
+    unitDiscount: string;
+    finalUnitPrice: string;
+    lineTotal: string;
+  }[];
+  subtotal: string;
+  itemsDiscount: string;
+  discountAmount: string;
+  total: string;
+  units: number;
+  change: { receivedCents: number; changeCents: number } | null;
+  issues: { index: number; variantId: string; code: string; message: string; available?: number }[];
+  canConfirm: boolean;
+}
+
+export interface SaleItem {
+  id: string;
+  productId: string;
+  variantId: string;
+  productName: string;
+  sku: string;
+  size: string | null;
+  color: string | null;
+  quantity: number;
+  unitPrice: string;
+  discountType: DiscountType | null;
+  discountValue: string | null;
+  unitDiscount: string;
+  finalUnitPrice: string;
+  lineTotal: string;
+}
+
+export interface SaleDetail {
+  id: string;
+  number: string;
+  status: SaleStatus;
+  createdAt: string;
+  seller: { id: string; name: string };
+  paymentMethod: PaymentMethod;
+  amountReceived: string | null;
+  changeGiven: string | null;
+  subtotal: string;
+  itemsDiscount: string;
+  discountType: DiscountType | null;
+  discountValue: string | null;
+  discountAmount: string;
+  total: string;
+  unitCount: number;
+  items: SaleItem[];
+  cancellation: { reason: string; notes: string | null; restockedUnits: number; user: string; createdAt: string } | null;
+  receiptPath: string | null;
+  movements: {
+    id: string;
+    type: MovementType;
+    quantity: number;
+    stockBefore: number;
+    stockAfter: number;
+    createdAt: string;
+    variant: { sku: string; size: string | null; color: string | null };
+    product: { id: string; name: string };
+    user: string;
+  }[];
+}
+
+export interface SaleListItem {
+  id: string;
+  number: string;
+  createdAt: string;
+  total: string;
+  unitCount: number;
+  paymentMethod: PaymentMethod;
+  status: SaleStatus;
+  seller: string;
+  preview: string[];
+}
+
+export interface SalesList extends Paginated<SaleListItem> {
+  summary: { count: number; total: string };
+}
+
+export interface Receipt {
+  number: string;
+  status: SaleStatus;
+  createdAt: string;
+  canceledAt: string | null;
+  seller: string;
+  store: { name: string; city: string; whatsapp: string; address: string | null; primaryColor: string };
+  items: Omit<SaleItem, "id" | "productId" | "variantId">[];
+  subtotal: string;
+  itemsDiscount: string;
+  discountType: DiscountType | null;
+  discountValue: string | null;
+  discountAmount: string;
+  total: string;
+  unitCount: number;
+  paymentMethod: PaymentMethod;
+  amountReceived: string | null;
+  changeGiven: string | null;
+  notice: string;
+}
+
+export interface SalesSummary {
+  today: { sales: number; total: string; units: number };
+  recent: { id: string; number: string; total: string; unitCount: number; paymentMethod: PaymentMethod; status: SaleStatus; createdAt: string }[];
 }

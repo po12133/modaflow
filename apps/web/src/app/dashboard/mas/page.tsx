@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { LogoutButton, PageHeader } from "@/components/dashboard/common";
-import { ACCOUNT_NAV } from "@/components/dashboard/nav-items";
+import { ACCOUNT_NAV, navItem } from "@/components/dashboard/nav-items";
 
 export const metadata: Metadata = { title: "Más" };
 
@@ -15,7 +15,7 @@ export default function MorePage() {
     <>
       <PageHeader title="Más opciones" />
       <nav aria-label="Más opciones" className="grid gap-2">
-        {ACCOUNT_NAV.map(({ href, label, icon: Icon }) => (
+        {[{ ...navItem("/dashboard/ventas"), label: "Historial de ventas" }, ...ACCOUNT_NAV].map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

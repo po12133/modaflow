@@ -1,19 +1,6 @@
-import type { Metadata } from "next";
-import { ComingSoon, PageHeader } from "@/components/dashboard/common";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Vender" };
-
-// Per-request page (reads the session through the API).
-export const instant = false;
-
-export default function SellPage() {
-  return (
-    <>
-      <PageHeader title="Vender" />
-      <ComingSoon
-        title="Punto de venta"
-        description="Pronto podrás registrar ventas en segundos, con descuento automático del inventario."
-      />
-    </>
-  );
+/** Old Stage 1 placeholder: the point of sale now lives at /dashboard/ventas/nueva. */
+export default function SellRedirect() {
+  redirect("/dashboard/ventas/nueva");
 }

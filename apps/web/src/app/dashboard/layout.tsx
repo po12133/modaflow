@@ -21,9 +21,9 @@ async function DashboardShell({ children }: { children: React.ReactNode }) {
   const { limits } = subscription;
 
   return (
-    <div className="min-h-dvh bg-[#f6f5fb] lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
+    <div className="min-h-dvh bg-[#f6f5fb] lg:grid lg:grid-cols-[256px_minmax(0,1fr)] print:block print:bg-white">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh flex-col gap-4 overflow-y-auto border-r bg-white px-3 py-4 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh print:hidden flex-col gap-4 overflow-y-auto border-r bg-white px-3 py-4 lg:flex">
         <Brand href="/dashboard" className="px-2" />
         <div className="flex items-center gap-3 rounded-2xl bg-muted/60 p-2.5">
           <StoreAvatar name={store.name} color={store.primaryColor} />
@@ -44,7 +44,7 @@ async function DashboardShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-[#f6f5fb]/90 px-4 py-3 backdrop-blur lg:px-6">
+        <header className="sticky top-0 z-30 flex print:hidden items-center gap-3 border-b bg-[#f6f5fb]/90 px-4 py-3 backdrop-blur lg:px-6">
           <div className="flex min-w-0 items-center gap-2.5 lg:hidden">
             <StoreAvatar name={store.name} color={store.primaryColor} className="size-9" />
             <div className="min-w-0">
@@ -77,9 +77,11 @@ async function DashboardShell({ children }: { children: React.ReactNode }) {
           </Link>
         </header>
 
-        <SubscriptionStrip subscription={subscription} />
+        <div className="print:hidden">
+          <SubscriptionStrip subscription={subscription} />
+        </div>
 
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-5 pb-28 lg:px-6 lg:pb-10">{children}</main>
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-5 pb-28 lg:px-6 lg:pb-10 print:max-w-none print:p-0">{children}</main>
       </div>
 
       <BottomNav />

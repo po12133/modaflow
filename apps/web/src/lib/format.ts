@@ -60,3 +60,23 @@ export function formatMoney(value: string | number): string {
   const n = typeof value === "number" ? value : Number(value);
   return `Bs ${Number.isInteger(n) ? formatNumber(n) : moneyFmt.format(n)}`;
 }
+
+export const PAYMENT_LABELS = {
+  CASH: "Efectivo",
+  QR: "QR bancario",
+  TRANSFER: "Transferencia",
+  OTHER: "Otro",
+} as const;
+
+const dateTimeFmt = new Intl.DateTimeFormat("es-BO", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "America/La_Paz",
+});
+
+export function formatDateTime(iso: string): string {
+  return dateTimeFmt.format(new Date(iso));
+}

@@ -147,8 +147,8 @@ La API valida sus variables al arrancar ([env.validation.ts](apps/api/src/config
 
 **Frontend**: `/`, `/registro`, `/login`, `/recuperar-contrasena`, `/restablecer-contrasena`, `/onboarding`,
 `/dashboard` (+ `productos`, `productos/nuevo`, `productos/[id]`, `productos/[id]/editar`, `productos/categorias`,
-`inventario`, `inventario/movimientos`, `suscripcion`, `configuracion`, `cuenta`, `mas`; `vender` y `reportes`
-aparecen como "En desarrollo"). Mobile first: en el celular hay barra inferior y en escritorio una barra lateral.
+`inventario`, `inventario/movimientos`, `suscripcion`, `configuracion`, `cuenta`, `mas`; `reportes`
+aparece como "En desarrollo"). Mobile first: en el celular hay barra inferior y en escritorio una barra lateral.
 
 ### Costo estimado de la IA
 
@@ -157,6 +157,64 @@ Un análisis con 1 a 3 fotos usa del orden de 3.000 a 6.000 tokens de entrada y 
 **Bs 0,15-0,30**: 300 análisis del plan Premium costarían unos USD 6-12 al mes. Es una estimación y conviene
 medirla con los tokens registrados en `ai_analyses`. Para reducir el costo se puede probar
 `ANTHROPIC_MODEL=claude-haiku-5-5` (mucho más económico), comparando antes la calidad con fotos reales.
+
+## Arquitectura (Etapa 3: punto de venta, ventas y boletas digitales)
+
+**Punto de venta** (`/dashboard/ventas/nueva`, también desde el botón **Vender** de la barra inferior)
+- Busca por nombre, SKU, categoría, etiqueta, color o talla. Solo muestra productos activos con stock; los
+  agotados aparecen con "Mostrar agotados", marcados y sin poder agregarse.
+- Una prenda con una sola variante (prenda única) se agrega con un toque; si tiene varias tallas o colores se
+  elige la variante. El carrito no deja superar el stock disponible.
+- El carrito vive en `sessionStorage` solo como borrador de la pantalla (no es dato de negocio): sobrevive a una
+  recarga y se vacía al confirmar la venta.
+
+**Montos y descuentos**
+- Todo se calcula en **centavos enteros** (sin flotantes) con la misma lógica en el frontend y en la API
+  (`sale-math.ts`). La API ignora cualquier precio o total enviado por el cliente y usa los precios vigentes.
+- Orden fijo: precio → descuento por unidad de cada línea (porcentaje o Bs) → subtotal de líneas → descuento
+  general (porcentaje o Bs) → total. Redondeo *half-up* a 2 decimales; ningún descuento puede dejar un monto negativo.
+- Métodos de pago: efectivo (monto recibido opcional y cambio), QR bancario, transferencia y otro. No se genera
+  ningún QR ni se integra con bancos: la vendedora **confirma explícitamente** que recibió el pago (`paymentConfirmed`).
+
+**Confirmación de la venta (`POST /sales`)**
+- Una sola transacción: bloquea productos y variantes en orden de id (`FOR UPDATE`, el mismo orden que usan los
+  movimientos manuales y las anulaciones, para evitar *deadlocks*), recalcula, valida stock, toma el número y crea
+  `Sale`, `SaleItem` (con *snapshot* de nombre, SKU, talla, color y precios) y un movimiento `SALE` por línea.
+  Cualquier error revierte todo.
+- **Numeración** `V-000001` por tienda con un contador atómico (`UPDATE tenants SET sale_seq = sale_seq + 1
+  RETURNING`) dentro de la transacción: sin `count()`, sin duplicados y sin huecos por ventas revertidas.
+- **Idempotencia**: cada cobro lleva una clave única por tienda; un reintento o un doble toque devuelve la misma venta.
+- La base valida con `CHECK` que `total = subtotal − descuentos`, que cada línea sea coherente, que el pago esté
+  confirmado y que todo movimiento `SALE`/`SALE_CANCEL` tenga su venta.
+
+**Boletas**
+- `/dashboard/ventas/[id]/boleta`: datos de la tienda, número, fecha, vendedor, prendas, descuentos, total, pago y la
+  leyenda "Comprobante interno de venta. No es una factura fiscal." Se puede descargar en PDF (80 mm, generado en la
+  API con `pdfkit`), imprimir, compartir por WhatsApp (`wa.me` con resumen y enlace, sin API oficial) o con el
+  menú nativo del celular.
+- **Enlace público** `/boleta/{token}`: token aleatorio de 192 bits que se crea al compartir. No expone ids ni datos
+  internos (solo el nombre de pila del vendedor), es `noindex` y el propietario o el administrador puede desactivarlo.
+  Un enlace desactivado o inexistente muestra "no encontrado" (en producción con código HTTP 200 por el *streaming*
+  de Next, pero sin ningún dato de la venta).
+
+**Historial y anulación**
+- `/dashboard/ventas`: tarjetas en el celular y tabla en escritorio; filtros por hoy, ayer, últimos 7 días, mes,
+  rango personalizado, estado, método y número; paginación en el backend. Fechas en hora de Bolivia (UTC−4).
+- `/dashboard/ventas/[id]`: detalle con movimientos de inventario. **Anular** (por ahora solo el propietario; los
+  roles están en `SALE_CANCEL_ROLES` para habilitar a administradores) pide motivo, bloquea la venta, restituye el
+  stock con movimientos `SALE_CANCEL` y registra `SaleCancellation`, todo en una transacción e idempotente. Una
+  venta no se anula dos veces ni se borra. **Anular no devuelve el dinero**: la devolución se gestiona aparte.
+- El inicio del panel muestra ventas de hoy, total, prendas vendidas y las últimas ventas (los totales excluyen
+  las anuladas).
+- Con la suscripción vencida no se pueden registrar ni anular ventas; el historial y las boletas siguen visibles.
+
+**Endpoints**: `GET /pos/products`, `POST /pos/preview`, `GET|POST /sales`, `GET /sales/:id`,
+`POST /sales/:id/cancel`, `GET /sales/:id/receipt`, `GET /sales/:id/receipt/pdf`,
+`POST|DELETE /sales/:id/receipt-link`, `GET /receipts/:token` y `GET /receipts/:token/pdf` (públicos, con límite de
+solicitudes) y `GET /dashboard/sales-summary`. Documentados en Swagger.
+
+**Frontend**: `/dashboard/ventas/nueva`, `/dashboard/ventas`, `/dashboard/ventas/[id]`, `/dashboard/ventas/[id]/boleta`,
+`/boleta/[token]` (pública) y las rutas proxy `/api/sales/[id]/receipt-pdf` y `/api/receipts/[token]/pdf`.
 
 ## Desarrollo con Docker (recomendado)
 
@@ -240,7 +298,7 @@ Otros comandos: `npm run build`, `npm run lint`, `npm run prisma:generate`.
 ## Pruebas
 
 ```bash
-# Unitarias (reglas de planes, prueba gratuita, límites, guards, login/bloqueo, WhatsApp)
+# Unitarias (planes, prueba gratuita, límites, guards, login/bloqueo, WhatsApp, montos y fechas de ventas)
 npm test -w @modaflow/api
 
 # E2E contra PostgreSQL real, en una base de datos separada *_test (se niegan a ejecutarse en otra)
@@ -260,6 +318,11 @@ Las pruebas e2e cubren:
   entradas, salidas y ajustes, historial consistente, salidas simultáneas sin stock negativo, límite de productos
   con solicitudes simultáneas, archivado y restauración, suscripción vencida, categorías sin duplicados,
   aislamiento entre tiendas y créditos de IA (cobro, idempotencia, reembolso al fallar y límite con concurrencia).
+- **Etapa 3:** búsqueda del POS, preview y montos, rechazo de precios enviados por el cliente, venta con snapshot
+  y movimientos, confirmación de pago y efectivo insuficiente, idempotencia concurrente, última unidad con 5
+  vendedores simultáneos, 8 ventas simultáneas con números consecutivos únicos, *rollback* completo, productos
+  archivados, boleta JSON/PDF y enlace público revocable, anulación concurrente con restitución de stock,
+  permisos por rol, historial con filtros y paginación, aislamiento entre tiendas y suscripción vencida.
 
 En las pruebas de créditos, el modelo de visión se reemplaza por un **doble de prueba**: se prueba la lógica real de
 créditos y no se simula a Claude. La llamada real a Claude tiene su propia prueba, que solo se ejecuta con clave:
@@ -276,10 +339,14 @@ Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
   [apps/api/prisma/schema.prisma](apps/api/prisma/schema.prisma).
 - Modelos: `User`, `Session`, `PasswordResetToken`, `Tenant`, `TenantMembership`, `Store`, `Plan`, `Subscription`,
   `SubscriptionUsage`, `TrialGrant` y `PlanChangeRequest` (Etapa 1); `Category`, `Tag`, `ProductTag`, `Product`,
-  `ProductVariant`, `ProductImage`, `InventoryMovement` y `AiAnalysis` (Etapa 2). Todos con claves foráneas,
+  `ProductVariant`, `ProductImage`, `InventoryMovement` y `AiAnalysis` (Etapa 2); `Sale`, `SaleItem` y
+  `SaleCancellation` (Etapa 3). Todos con claves foráneas,
   índices (incluidos índices trigram `pg_trgm` para la búsqueda) y restricciones `CHECK`.
-- Migraciones: `20261115015333_init_tenancy_and_subscriptions` y `20261115030329_catalog_inventory_ai`. La segunda
-  solo agrega tablas y una columna con valor por defecto (`tenants.product_seq`), sin cambios destructivos.
+- Migraciones: `20261115015333_init_tenancy_and_subscriptions`, `20261115030329_catalog_inventory_ai`,
+  `20261115040424_sale_movement_types` y `20261115040539_sales_pos_receipts`. Desde la segunda solo agregan tablas,
+  valores de enum, columnas con valor por defecto o nulas (`tenants.product_seq`, `tenants.sale_seq`,
+  `inventory_movements.sale_id`) y restricciones, sin cambios destructivos. Los valores nuevos del enum de
+  movimientos van en una migración aparte porque PostgreSQL no permite usarlos en la misma transacción que los crea.
 - No se usa `prisma db push`: los cambios de esquema van siempre como migraciones versionadas.
 - Migraciones versionadas en `apps/api/prisma/migrations`. Al arrancar, el contenedor `api` (desarrollo y
   producción) ejecuta `prisma migrate deploy` (solo aplica migraciones pendientes, nunca borra datos) y el seed de planes.
@@ -430,6 +497,7 @@ Variables de entorno de staging (distintas de producción, **otra contraseña**)
 | @anthropic-ai/sdk (Etapa 2) | 1.8.0 |
 | @aws-sdk/client-s3 + s3-request-presigner (Etapa 2) | 3.1169.0 |
 | sharp (Etapa 2) | 0.35.5 |
+| pdfkit (Etapa 3) | 0.20.2 |
 | zod (web y api) | 4.6.7 |
 | @nestjs/throttler / @node-rs/argon2 (Etapa 1) | 6.7.1 / 2.2.2 |
 | SeaweedFS (S3 local, solo desarrollo) | 4.53 |

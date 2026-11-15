@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, Camera, ChartLine, ChevronRight, Clock, Package, PartyPopper, ShoppingCart } from "lucide-react";
 import { UsageMeter } from "@/components/dashboard/usage-meter";
+import { SaleStatusBadge } from "@/components/sales/sale-status-badge";
+import { api } from "@/lib/api";
 import { getDashboardContext, getPlanChangeRequests } from "@/lib/dal";
-import { formatDate, plural, STATUS_LABELS } from "@/lib/format";
+import { formatDate, formatMoney, PAYMENT_LABELS, plural, STATUS_LABELS } from "@/lib/format";
+import type { SalesSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Inicio" };
@@ -11,18 +14,14 @@ export const metadata: Metadata = { title: "Inicio" };
 // Per-request page (reads the session through the API).
 export const instant = false;
 
-const SOON_TAG = (
-  <span className="rounded-full bg-white/25 px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase">
-    En desarrollo
-  </span>
-);
-
 export default async function DashboardHome({ searchParams }: PageProps<"/dashboard">) {
-  const [{ me, store, subscription }, requests, params] = await Promise.all([
+  const [{ me, store, subscription }, requests, params, sales] = await Promise.all([
     getDashboardContext(),
     getPlanChangeRequests(),
     searchParams,
+    api<SalesSummary>("/dashboard/sales-summary"),
   ]);
+  const timeFmt = new Intl.DateTimeFormat("es-BO", { hour: "2-digit", minute: "2-digit", timeZone: "America/La_Paz" });
   const firstName = me.user.name.split(" ")[0];
   const pending = requests.find((r) => r.status === "PENDING");
   const { limits } = subscription;
@@ -61,14 +60,14 @@ export default async function DashboardHome({ searchParams }: PageProps<"/dashbo
             <span className="text-xs opacity-90">Con foto e IA</span>
           </Link>
           <Link
-            href="/dashboard/vender"
+            href="/dashboard/ventas/nueva"
             className="grid min-h-32 content-start gap-1 rounded-[20px] bg-gradient-to-br from-[#16132b] to-[#3b2f7a] p-4 text-white shadow-[0_16px_30px_-18px_rgba(22,19,43,0.6)] transition-transform active:scale-[0.98]"
           >
             <span className="mb-1 grid size-12 place-items-center rounded-2xl bg-white/20">
               <ShoppingCart className="size-6" aria-hidden="true" />
             </span>
             <b className="text-base leading-tight">Nueva venta</b>
-            {SOON_TAG}
+            <span className="text-xs opacity-90">Cobra y entrega la boleta</span>
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -91,6 +90,51 @@ export default async function DashboardHome({ searchParams }: PageProps<"/dashbo
             </Link>
           ))}
         </div>
+      </section>
+
+      {/* Today's sales (canceled sales are excluded by the API) */}
+      <section aria-labelledby="today-title" className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="today-title" className="font-extrabold">Ventas de hoy</h2>
+          <Link href="/dashboard/ventas?period=today" className="text-sm font-bold text-primary">
+            Ver historial
+          </Link>
+        </div>
+        <dl className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl bg-muted/60 px-2 py-3">
+            <dt className="text-xs font-semibold text-muted-foreground">Ventas</dt>
+            <dd className="text-2xl font-extrabold">{sales.today.sales}</dd>
+          </div>
+          <div className="rounded-xl bg-muted/60 px-2 py-3">
+            <dt className="text-xs font-semibold text-muted-foreground">Total</dt>
+            <dd className="text-lg leading-8 font-extrabold whitespace-nowrap text-primary">{formatMoney(sales.today.total)}</dd>
+          </div>
+          <div className="rounded-xl bg-muted/60 px-2 py-3">
+            <dt className="text-xs font-semibold text-muted-foreground">Prendas</dt>
+            <dd className="text-2xl font-extrabold">{sales.today.units}</dd>
+          </div>
+        </dl>
+        {sales.recent.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Todavía no registraste ventas.</p>
+        ) : (
+          <ul className="divide-y">
+            {sales.recent.map((sale) => (
+              <li key={sale.id}>
+                <Link href={`/dashboard/ventas/${sale.id}`} className="flex items-center gap-3 py-2.5 text-sm">
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold">{sale.number}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {formatDate(sale.createdAt)} {timeFmt.format(new Date(sale.createdAt))} · {plural(sale.unitCount, "prenda")} · {PAYMENT_LABELS[sale.paymentMethod]}
+                    </span>
+                  </span>
+                  {sale.status === "CANCELED" && <SaleStatusBadge status={sale.status} />}
+                  <b className="whitespace-nowrap">{formatMoney(sale.total)}</b>
+                  <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* Subscription summary */}

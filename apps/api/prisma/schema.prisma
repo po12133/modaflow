@@ -40,6 +40,8 @@ model User {
   inventoryMovements  InventoryMovement[]
   productImages       ProductImage[]
   aiAnalyses          AiAnalysis[]
+  sales               Sale[]               @relation("SaleSeller")
+  saleCancellations   SaleCancellation[]   @relation("SaleCanceler")
 
   @@map("users")
 }
@@ -96,6 +98,8 @@ model Tenant {
   name       String   @db.VarChar(120)
   /// Last product number used to generate SKUs (P00001...). Incremented atomically.
   productSeq Int      @default(0) @map("product_seq")
+  /// Last sale number used (V-000001...). Incremented atomically inside the sale transaction.
+  saleSeq    Int      @default(0) @map("sale_seq")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -113,6 +117,7 @@ model Tenant {
   productImages      ProductImage[]
   inventoryMovements InventoryMovement[]
   aiAnalyses         AiAnalysis[]
+  sales              Sale[]
 
   @@map("tenants")
 }
@@ -152,6 +157,7 @@ model Store {
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products Product[]
+  sales    Sale[]
 
   @@index([tenantId])
   @@map("stores")
@@ -407,6 +413,7 @@ model Product {
   images     ProductImage[]
   tags       ProductTag[]
   movements  InventoryMovement[]
+  saleItems  SaleItem[]
 
   @@unique([tenantId, sku])
   @@index([tenantId, status, createdAt])
@@ -436,6 +443,7 @@ model ProductVariant {
   tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   movements InventoryMovement[]
+  saleItems SaleItem[]
 
   @@unique([tenantId, sku])
   @@index([productId])
@@ -480,6 +488,9 @@ enum InventoryMovementType {
   MANUAL_OUT
   ADJUSTMENT_IN
   ADJUSTMENT_OUT
+  /// Stage 3: units sold (decrease) and restored when a sale is canceled (increase).
+  SALE
+  SALE_CANCEL
 }
 
 /// Append-only stock ledger. stock_after = stock_before +/- quantity is enforced
@@ -498,17 +509,21 @@ model InventoryMovement {
   reference      String?               @db.VarChar(80)
   /// Client-generated key so a retried request does not record the movement twice.
   idempotencyKey String?               @map("idempotency_key") @db.VarChar(64)
+  /// Sale that produced (SALE) or reverted (SALE_CANCEL) this movement.
+  saleId         String?               @map("sale_id") @db.Uuid
   createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
 
   tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
   user    User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sale    Sale?          @relation(fields: [saleId], references: [id], onDelete: Restrict)
 
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId, createdAt])
   @@index([variantId, createdAt])
   @@index([productId, createdAt])
+  @@index([saleId])
   @@map("inventory_movements")
 }
 
@@ -552,4 +567,129 @@ model AiAnalysis {
   @@index([tenantId, createdAt])
   @@index([status, createdAt])
   @@map("ai_analyses")
+}
+
+// ---------------------------------------------------------------------------
+// Sales / point of sale (Stage 3)
+// ---------------------------------------------------------------------------
+
+enum PaymentMethod {
+  CASH
+  QR
+  TRANSFER
+  OTHER
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELED
+}
+
+enum DiscountType {
+  PERCENT
+  AMOUNT
+}
+
+/// A confirmed sale. Amounts are computed by the backend from current prices
+/// (never trusted from the client). `number` is the per-tenant visible number
+/// (V-000001), independent from the internal id.
+model Sale {
+  id               String        @id @default(uuid()) @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  storeId          String        @map("store_id") @db.Uuid
+  number           Int
+  sellerId         String        @map("seller_id") @db.Uuid
+  /// Sum of original prices (unit price x quantity).
+  subtotal         Decimal       @db.Decimal(12, 2)
+  /// Sum of per-item discounts.
+  itemsDiscount    Decimal       @map("items_discount") @db.Decimal(12, 2)
+  /// General discount as entered (percent or Bs) and the resulting amount.
+  discountType     DiscountType? @map("discount_type")
+  discountValue    Decimal?      @map("discount_value") @db.Decimal(12, 2)
+  discountAmount   Decimal       @map("discount_amount") @db.Decimal(12, 2)
+  total            Decimal       @db.Decimal(12, 2)
+  /// Total number of units (garments) sold.
+  unitCount        Int           @map("unit_count")
+  paymentMethod    PaymentMethod @map("payment_method")
+  /// The seller explicitly confirmed the payment was received.
+  paymentConfirmed Boolean       @map("payment_confirmed")
+  amountReceived   Decimal?      @map("amount_received") @db.Decimal(12, 2)
+  changeGiven      Decimal?      @map("change_given") @db.Decimal(12, 2)
+  status           SaleStatus    @default(COMPLETED)
+  idempotencyKey   String        @map("idempotency_key") @db.VarChar(64)
+  /// Random capability token for the public receipt link (null = no link / revoked).
+  receiptToken     String?       @unique @map("receipt_token") @db.VarChar(64)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  canceledAt       DateTime?     @map("canceled_at") @db.Timestamptz(3)
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store        Store               @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  seller       User                @relation("SaleSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  items        SaleItem[]
+  cancellation SaleCancellation?
+  movements    InventoryMovement[]
+
+  @@unique([tenantId, number])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, paymentMethod, createdAt])
+  @@map("sales")
+}
+
+/// Sold line with a snapshot of the commercial data at the time of sale, so
+/// later edits to the product never change past sales.
+model SaleItem {
+  id             String        @id @default(uuid()) @db.Uuid
+  saleId         String        @map("sale_id") @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  productId      String        @map("product_id") @db.Uuid
+  variantId      String        @map("variant_id") @db.Uuid
+  position       Int
+  productName    String        @map("product_name") @db.VarChar(120)
+  sku            String        @db.VarChar(48)
+  size           String?       @db.VarChar(20)
+  color          String?       @db.VarChar(40)
+  quantity       Int
+  /// Original unit price at the time of sale.
+  unitPrice      Decimal       @map("unit_price") @db.Decimal(12, 2)
+  /// Discount as entered (percent or Bs per unit).
+  discountType   DiscountType? @map("discount_type")
+  discountValue  Decimal?      @map("discount_value") @db.Decimal(12, 2)
+  /// Per-unit discount amount and resulting unit price.
+  unitDiscount   Decimal       @map("unit_discount") @db.Decimal(12, 2)
+  finalUnitPrice Decimal       @map("final_unit_price") @db.Decimal(12, 2)
+  /// finalUnitPrice x quantity.
+  lineTotal      Decimal       @map("line_total") @db.Decimal(12, 2)
+
+  sale    Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([tenantId, productId])
+  @@index([variantId])
+  @@map("sale_items")
+}
+
+/// Controlled cancellation of a sale (never a physical delete). Stock is
+/// restored with SALE_CANCEL movements. Money refunds are handled separately.
+model SaleCancellation {
+  id             String   @id @default(uuid()) @db.Uuid
+  saleId         String   @unique @map("sale_id") @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  reason         String   @db.VarChar(200)
+  notes          String?  @db.VarChar(500)
+  /// Units returned to stock.
+  restockedUnits Int      @map("restocked_units")
+  idempotencyKey String?  @map("idempotency_key") @db.VarChar(64)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  user User @relation("SaleCanceler", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@map("sale_cancellations")
 }

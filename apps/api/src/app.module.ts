@@ -15,6 +15,7 @@ import { OnboardingModule } from './onboarding/onboarding.module.js';
 import { PlansModule } from './plans/plans.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProductsModule } from './products/products.module.js';
+import { SalesModule } from './sales/sales.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { StoresModule } from './stores/stores.module.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
@@ -50,6 +51,8 @@ import { UsersModule } from './users/users.module.js';
     ProductsModule,
     InventoryModule,
     AiModule,
+    // Stage 3
+    SalesModule,
   ],
   providers: [
     // Global guards run in this order: rate limit -> CSRF origin check -> session.

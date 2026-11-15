@@ -60,6 +60,7 @@ export class ProductsService {
           { name: { contains: search, mode: 'insensitive' } },
           { sku: { contains: search, mode: 'insensitive' } },
           { garmentType: { contains: search, mode: 'insensitive' } },
+          { category: { name: { contains: search, mode: 'insensitive' } } },
           { variants: { some: { sku: { contains: search, mode: 'insensitive' } } } },
           { tags: { some: { tag: { normalizedName: { contains: key } } } } },
         ],
