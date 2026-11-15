@@ -2,10 +2,10 @@
 
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CHART_COLORS } from "@/config/reports";
-import { formatMoney } from "@/lib/format";
-import { shortMoney } from "@/lib/reports";
+import { formatMoney } from "@modaflow/ui/lib/format";
+import { shortMoney } from "@modaflow/ui/lib/numbers";
 import type { ChartPoint } from "@/types/reports";
-import { DataTable, EmptyChart, TooltipBox } from "./chart-parts";
+import { DataTable, EmptyChart, TooltipBox } from "@modaflow/ui/components/charts/chart-parts";
 
 const { current: CURRENT, previous: PREVIOUS, grid: GRID, axis: AXIS } = CHART_COLORS;
 

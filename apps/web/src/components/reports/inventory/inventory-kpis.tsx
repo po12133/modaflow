@@ -1,6 +1,6 @@
-import { formatMoney, plural } from "@/lib/format";
+import { formatMoney, plural } from "@modaflow/ui/lib/format";
 import type { InventoryReport } from "@/types/reports";
-import { KpiCard } from "@/components/common/kpi-card";
+import { KpiCard } from "@modaflow/ui/components/kpi-card";
 
 export function InventoryKpis({ stock, lowStock, value }: Pick<InventoryReport, "stock" | "value"> & { lowStock: number }) {
   return (

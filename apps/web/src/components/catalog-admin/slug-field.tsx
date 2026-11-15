@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { checkSlugAction } from "@/actions/catalog";
-import { Field } from "@/components/form";
-import { Input } from "@/components/ui/input";
+import { Field } from "@modaflow/ui/components/form";
+import { Input } from "@modaflow/ui/components/ui/input";
 import type { FormState } from "@/lib/types";
 
 export function SlugField({ defaultValue, origin, state }: { defaultValue: string; origin: string; state: FormState }) {

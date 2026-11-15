@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ImageOff, Plus, Tags } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/common";
-import { Pagination } from "@/components/pagination";
+import { Pagination } from "@modaflow/ui/components/pagination";
 import { InventoryTabs } from "@/components/products/inventory-tabs";
 import { type FilterValues, ProductFilters } from "@/components/products/product-filters";
 import { StockBadge } from "@/components/products/stock-badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import { api } from "@/lib/api";
 import { getCategories, getDashboardContext } from "@/lib/dal";
-import { formatNumber, formatMoney } from "@/lib/format";
+import { formatNumber, formatMoney } from "@modaflow/ui/lib/format";
 import type { Paginated, ProductListItem } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Productos" };

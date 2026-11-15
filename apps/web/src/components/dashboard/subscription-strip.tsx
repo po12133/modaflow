@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { CircleAlert, Sparkles } from "lucide-react";
-import { formatDate, plural } from "@/lib/format";
+import { formatDate, plural } from "@modaflow/ui/lib/format";
 import type { Entitlements } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 /** Persistent subscription notice under the top bar (trial countdown or read-only warning). */
 export function SubscriptionStrip({ subscription }: { subscription: Entitlements }) {

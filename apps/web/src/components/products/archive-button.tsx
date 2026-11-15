@@ -3,7 +3,7 @@
 import { Archive, ArchiveRestore, LoaderCircle } from "lucide-react";
 import { useState, useTransition } from "react";
 import { archiveProductAction, restoreProductAction } from "@/actions/products";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@modaflow/ui/components/ui/dialog";
 
 /** Archive (with confirmation) or restore a product. Archiving never deletes history. */
 export function ArchiveButton({ productId, archived }: { productId: string; archived: boolean }) {

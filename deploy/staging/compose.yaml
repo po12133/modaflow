@@ -14,6 +14,8 @@
 #   Domains (set per service in the Coolify UI):
 #     web -> https://staging.modaflow.amicornios.com:3000
 #     api -> https://api.staging.modaflow.amicornios.com:3001
+#     admin-web -> https://admin.staging.modaflow.amicornios.com:3000
+#     admin-api, postgres, migrate -> no domain (private network only)
 #
 # Local check from the repository root:
 #   docker compose -f deploy/staging/compose.yaml --env-file .env config
@@ -41,6 +43,27 @@ services:
     networks:
       - modaflow
 
+  # One-shot job on every deploy: applies pending migrations (never drops data),
+  # creates missing plans and sets the passwords of the restricted database
+  # roles. It is the only service that uses the database owner account.
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    restart: "no"
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/cli/provision-db-roles.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-modaflow}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}
+      ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD:?ADMIN_DB_PASSWORD is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - modaflow
+
   api:
     build:
       context: ../..
@@ -51,7 +74,7 @@ services:
       NODE_ENV: production
       APP_ENV: staging
       PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-modaflow}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      DATABASE_URL: postgresql://modaflow_app:${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
       CORS_ORIGINS: ${CORS_ORIGINS:-https://staging.modaflow.amicornios.com}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
       SWAGGER_PATH: ${SWAGGER_PATH:-docs}
@@ -72,8 +95,48 @@ services:
     expose:
       - "3001"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - modaflow
+
+  # Admin API: no public domain. Only admin-web reaches it over the private network.
+  admin-api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    restart: unless-stopped
+    command: ["node", "dist/admin-main.js"]
+    environment:
+      NODE_ENV: production
+      APP_ENV: staging
+      PORT: 3001
+      DATABASE_URL: postgresql://modaflow_admin:${ADMIN_DB_PASSWORD:?ADMIN_DB_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      CORS_ORIGINS: ${ADMIN_WEB_URL:-https://admin.staging.modaflow.amicornios.com}
+      ADMIN_WEB_URL: ${ADMIN_WEB_URL:-https://admin.staging.modaflow.amicornios.com}
+      ADMIN_SESSION_TTL_HOURS: ${ADMIN_SESSION_TTL_HOURS:-8}
+      ADMIN_SESSION_IDLE_MINUTES: ${ADMIN_SESSION_IDLE_MINUTES:-60}
+      SWAGGER_ENABLED: "false"
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+    expose:
+      - "3001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
@@ -105,6 +168,31 @@ services:
         condition: service_started
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - modaflow
+
+  admin-web:
+    build:
+      context: ../..
+      dockerfile: apps/admin-web/Dockerfile
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      ADMIN_API_INTERNAL_URL: http://admin-api:3001
+    expose:
+      - "3000"
+    depends_on:
+      admin-api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 5

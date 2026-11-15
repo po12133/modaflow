@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Pagination } from "@/components/pagination";
+import { Pagination } from "@modaflow/ui/components/pagination";
 import { SalesTrendChart } from "@/components/reports/charts/trend-chart";
 import { SalesReportCards } from "@/components/reports/sales/sales-report-cards";
 import { SalesReportFilters } from "@/components/reports/sales/sales-report-filters";
 import { SalesReportKpis } from "@/components/reports/sales/sales-report-kpis";
 import { SalesReportTable } from "@/components/reports/sales/sales-report-table";
 import { NoReportAccess } from "@/components/reports/ui/no-report-access";
-import { Panel } from "@/components/common/panel";
+import { Panel } from "@modaflow/ui/components/panel";
 import { ReportShell } from "@/components/reports/ui/report-shell";
 import { getDashboardContext } from "@/lib/dal";
 import { periodParams } from "@/lib/reports";
-import { searchParam as one } from "@/lib/search-params";
+import { searchParam as one } from "@modaflow/ui/lib/search-params";
 import { getSalesChart, getSalesReport } from "@/services/reports";
 
 export const metadata: Metadata = { title: "Reporte de ventas" };

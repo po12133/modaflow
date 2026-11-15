@@ -2,10 +2,10 @@
 
 import { Check, ImageOff } from "lucide-react";
 import { useActionState, useState } from "react";
-import { Field, FormMessage, SubmitButton, TextAreaField, TextField } from "@/components/form";
+import { Field, FormMessage, SubmitButton, TextAreaField, TextField } from "@modaflow/ui/components/form";
 import type { FormState, Store } from "@/lib/types";
 import { STORE_TIMEZONES } from "@/lib/validation";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 const COLOR_PRESETS = [
   { value: "#6C4CF5", name: "Violeta" },

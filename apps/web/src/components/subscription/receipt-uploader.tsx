@@ -4,7 +4,7 @@ import { LoaderCircle, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { cancelPaymentAction, submitPaymentAction } from "@/actions/subscription";
-import type { PaymentRequest } from "@/types/billing";
+import type { PaymentRequest } from "@modaflow/ui/types/billing";
 
 export function ReceiptUploader({ request }: { request: PaymentRequest }) {
   const router = useRouter();

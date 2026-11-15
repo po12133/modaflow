@@ -3,7 +3,7 @@
 import { Download, LinkIcon, LoaderCircle, Printer, Share2, Unlink } from "lucide-react";
 import { useState, useTransition } from "react";
 import { createReceiptLinkAction, revokeReceiptLinkAction } from "@/actions/sales";
-import { formatMoney, PAYMENT_LABELS } from "@/lib/format";
+import { formatMoney, PAYMENT_LABELS } from "@modaflow/ui/lib/format";
 import type { Receipt } from "@/lib/types";
 import { WhatsAppIcon } from "@/components/common/whatsapp-icon";
 

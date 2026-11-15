@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, LayoutGrid, ShoppingBag, Store } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 import { useCart } from "../cart/cart-provider";
 
 const ITEMS = [

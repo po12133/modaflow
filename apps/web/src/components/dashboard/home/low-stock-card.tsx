@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { plural } from "@/lib/format";
+import { plural } from "@modaflow/ui/lib/format";
 import type { SalesSummary } from "@/lib/types";
 
 export function LowStockCard({ lowStock }: { lowStock: SalesSummary["lowStock"] }) {

@@ -5,7 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { RequestActions } from "@/components/catalog-admin/request-actions";
 import { RequestStatusBadge } from "@/components/catalog-admin/request-list";
 import { ApiError } from "@/lib/api";
-import { formatDateTime, formatMoney, variantLabel } from "@/lib/format";
+import { formatDateTime, formatMoney, variantLabel } from "@modaflow/ui/lib/format";
 import { getOrderRequest } from "@/services/catalog";
 
 export const metadata: Metadata = { title: "Solicitud del catálogo" };

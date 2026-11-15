@@ -1,13 +1,12 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Query, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { CurrentAuth } from '../auth/decorators.js';
+import { CurrentStaff, type StaffContext } from './auth/staff-context.js';
 import { clientIp } from '../common/client-ip.js';
-import type { AuthContext } from '../common/request-context.js';
 import { AdminTenantsService } from './admin-tenants.service.js';
 import { AdminUsersService } from './admin-users.service.js';
 import { TenantStatusDto, TenantsQueryDto, UserStatusDto, UsersQueryDto } from './dto.js';
-import { AdminArea, SuperadminOnly } from './global-roles.guard.js';
+import { AdminArea, SuperadminOnly } from './staff-roles.guard.js';
 
 @ApiTags('admin')
 @AdminArea()
@@ -33,8 +32,8 @@ export class AdminAccountsController {
   @Patch('tenants/:id/status')
   @SuperadminOnly()
   @ApiOperation({ summary: 'Suspender o reactivar un negocio (con motivo y auditoría)' })
-  tenantStatus(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: TenantStatusDto, @CurrentAuth() auth: AuthContext, @Req() req: Request) {
-    return this.tenants.setStatus(id, dto, auth.userId, clientIp(req));
+  tenantStatus(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: TenantStatusDto, @CurrentStaff() auth: StaffContext, @Req() req: Request) {
+    return this.tenants.setStatus(id, dto, auth.staffId, clientIp(req));
   }
 
   @Get('users')
@@ -52,7 +51,7 @@ export class AdminAccountsController {
   @Patch('users/:id/status')
   @SuperadminOnly()
   @ApiOperation({ summary: 'Suspender o reactivar el acceso de un usuario (cierra sus sesiones)' })
-  userStatus(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UserStatusDto, @CurrentAuth() auth: AuthContext, @Req() req: Request) {
-    return this.users.setStatus(id, dto, auth.userId, clientIp(req));
+  userStatus(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UserStatusDto, @CurrentStaff() auth: StaffContext, @Req() req: Request) {
+    return this.users.setStatus(id, dto, auth.staffId, clientIp(req));
   }
 }

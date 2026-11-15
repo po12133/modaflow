@@ -1,13 +1,13 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AuditService } from '../audit/audit.service.js';
+import { AuditService } from './audit/audit.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
-import { SubscriptionExpiryService } from '../notifications/subscription-expiry.service.js';
+import { SubscriptionExpiryService } from './jobs/subscription-expiry.service.js';
 import { AdminDashboardService } from './admin-dashboard.service.js';
 import { AdminStatsService } from './admin-stats.service.js';
 import { AuditQueryDto, PageQueryDto, StatsQueryDto } from './dto.js';
-import { AdminArea, SuperadminOnly } from './global-roles.guard.js';
+import { AdminArea, SuperadminOnly } from './staff-roles.guard.js';
 
 @ApiTags('admin')
 @AdminArea()

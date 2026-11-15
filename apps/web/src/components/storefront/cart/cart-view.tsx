@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@modaflow/ui/lib/format";
 import { CartLines } from "./cart-lines";
 import { useCart } from "./cart-provider";
 import { WhatsappCheckout } from "./whatsapp-checkout";

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Globe, Lock } from "lucide-react";
 import { CATALOG_REQUIRED_PLAN } from "@/config/catalog";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 import type { CatalogSettings } from "@/types/catalog";
 import { CatalogQr } from "./catalog-qr";
 import { ShareLink } from "./share-link";

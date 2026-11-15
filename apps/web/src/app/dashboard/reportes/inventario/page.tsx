@@ -7,7 +7,7 @@ import { NoReportAccess } from "@/components/reports/ui/no-report-access";
 import { ReportShell } from "@/components/reports/ui/report-shell";
 import { getDashboardContext } from "@/lib/dal";
 import { periodParams } from "@/lib/reports";
-import { searchParam as one } from "@/lib/search-params";
+import { searchParam as one } from "@modaflow/ui/lib/search-params";
 import { getInventoryReport } from "@/services/reports";
 
 export const metadata: Metadata = { title: "Reporte de inventario" };

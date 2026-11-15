@@ -2,8 +2,8 @@
 
 import { Search } from "lucide-react";
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { chip, useUrlUpdate } from "@/hooks/use-url-update";
+import { Input } from "@modaflow/ui/components/ui/input";
+import { chip, useUrlUpdate } from "@modaflow/ui/hooks/use-url-update";
 
 const selectClass = "h-11 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-base md:h-10 md:text-sm";
 

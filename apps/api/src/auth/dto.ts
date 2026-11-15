@@ -58,7 +58,6 @@ export class UserDto {
   @ApiProperty() name!: string;
   @ApiProperty() email!: string;
   @ApiProperty() createdAt!: Date;
-  @ApiProperty({ enum: ['SUPERADMIN', 'SUPPORT'], nullable: true, type: String }) globalRole!: 'SUPERADMIN' | 'SUPPORT' | null;
 }
 
 export class MembershipDto {

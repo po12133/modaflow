@@ -59,6 +59,29 @@ services:
     networks:
       - modaflow
 
+  # One-shot: applies migrations, loads missing plans and sets the passwords of
+  # the restricted database roles. Only this service uses the owner account.
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    restart: "no"
+    command: ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && npx prisma db seed && npm run db:roles"]
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-modaflow}:${POSTGRES_PASSWORD:-modaflow_dev_password}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-modaflow_app_dev_password}
+      ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD:-modaflow_admin_dev_password}
+    volumes:
+      - ../../apps/api/src:/app/apps/api/src
+      - ../../apps/api/prisma:/app/apps/api/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - modaflow
+
   api:
     build:
       context: ../..
@@ -69,7 +92,7 @@ services:
       NODE_ENV: development
       APP_ENV: development
       PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-modaflow}:${POSTGRES_PASSWORD:-modaflow_dev_password}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      DATABASE_URL: postgresql://modaflow_app:${APP_DB_PASSWORD:-modaflow_app_dev_password}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
       SWAGGER_PATH: ${SWAGGER_PATH:-docs}
@@ -98,8 +121,54 @@ services:
       - ../../apps/api/prisma:/app/apps/api/prisma
       - ../../apps/api/test:/app/apps/api/test
     depends_on:
-      postgres:
+      migrate:
+        condition: service_completed_successfully
+      storage:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - modaflow
+
+  # Admin API: separate process, separate database role, no public domain.
+  admin-api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    restart: unless-stopped
+    command: ["sh", "-c", "npx prisma generate && npm run start:admin"]
+    environment:
+      NODE_ENV: development
+      APP_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://modaflow_admin:${ADMIN_DB_PASSWORD:-modaflow_admin_dev_password}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
+      CORS_ORIGINS: ${ADMIN_WEB_URL:-http://localhost:3002}
+      ADMIN_WEB_URL: ${ADMIN_WEB_URL:-http://localhost:3002}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      SWAGGER_PATH: ${SWAGGER_PATH:-docs}
+      S3_ENDPOINT: http://storage:8333
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:8333}
+      S3_REGION: us-east-1
+      S3_BUCKET: ${S3_BUCKET:-modaflow-dev}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-modaflow-dev}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-modaflow-dev-secret}
+      S3_FORCE_PATH_STYLE: "true"
+      TSC_WATCHFILE: DynamicPriorityPolling
+      TSC_WATCHDIRECTORY: DynamicPriorityPolling
+    ports:
+      # Localhost only, for Swagger during development. Never published in production.
+      - "127.0.0.1:${ADMIN_API_HOST_PORT:-3003}:3001"
+    volumes:
+      - ../../apps/api/src:/app/apps/api/src
+      - ../../apps/api/prisma:/app/apps/api/prisma
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       storage:
         condition: service_healthy
     healthcheck:
@@ -129,8 +198,31 @@ services:
     volumes:
       - ../../apps/web/src:/app/apps/web/src
       - ../../apps/web/public:/app/apps/web/public
+      - ../../packages/ui/src:/app/packages/ui/src
     depends_on:
       api:
+        condition: service_started
+    networks:
+      - modaflow
+
+  admin-web:
+    build:
+      context: ../..
+      dockerfile: apps/admin-web/Dockerfile
+      target: dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      ADMIN_API_INTERNAL_URL: http://admin-api:3001
+      WATCH_POLL_INTERVAL_MS: ${WATCH_POLL_INTERVAL_MS:-1000}
+    ports:
+      - "${ADMIN_WEB_HOST_PORT:-3002}:3000"
+    volumes:
+      - ../../apps/admin-web/src:/app/apps/admin-web/src
+      - ../../apps/admin-web/public:/app/apps/admin-web/public
+      - ../../packages/ui/src:/app/packages/ui/src
+    depends_on:
+      admin-api:
         condition: service_started
     networks:
       - modaflow

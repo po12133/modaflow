@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus, Receipt as ReceiptIcon } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/common";
-import { Pagination } from "@/components/pagination";
+import { Pagination } from "@modaflow/ui/components/pagination";
 import { SalesFilters, type SalesFilterValues } from "@/components/sales/sales-filters";
 import { SaleStatusBadge } from "@/components/sales/sale-status-badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import { api } from "@/lib/api";
-import { formatDateTime, formatMoney, PAYMENT_LABELS } from "@/lib/format";
+import { formatDateTime, formatMoney, PAYMENT_LABELS } from "@modaflow/ui/lib/format";
 import type { SalesList } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Ventas" };

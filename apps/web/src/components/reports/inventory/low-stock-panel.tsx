@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { LOW_STOCK_OPTIONS } from "@/config/reports";
-import { plural } from "@/lib/format";
+import { plural } from "@modaflow/ui/lib/format";
 import type { InventoryReport } from "@/types/reports";
 import { UrlSelect, UrlToggle } from "../controls/url-fields";
-import { Panel } from "@/components/common/panel";
+import { Panel } from "@modaflow/ui/components/panel";
 
 interface LowStockPanelProps {
   lowStock: InventoryReport["lowStock"];

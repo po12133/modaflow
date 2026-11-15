@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { forgotPasswordAction } from "@/actions/auth";
-import { FormMessage, SubmitButton, TextField } from "@/components/form";
+import { FormMessage, SubmitButton, TextField } from "@modaflow/ui/components/form";
 import type { FormState } from "@/lib/types";
 
 export function ForgotPasswordForm() {

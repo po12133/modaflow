@@ -5,7 +5,6 @@ import { generateToken, sha256 } from '../common/crypto.js';
 import { DAY_MS } from '../subscriptions/entitlement-rules.js';
 import { EnvironmentVariables } from '../config/env.validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { GlobalRole } from '../generated/prisma/enums.js';
 
 export const SESSION_COOKIE = 'mf_session';
 /** Avoid a DB write on every request: refresh last_used_at at most this often. */
@@ -20,7 +19,6 @@ export interface ValidSession {
   id: string;
   userId: string;
   activeTenantId: string | null;
-  globalRole: GlobalRole | null;
 }
 
 @Injectable()
@@ -60,7 +58,7 @@ export class SessionService {
   async validate(token: string): Promise<ValidSession | null> {
     const session = await this.prisma.session.findUnique({
       where: { tokenHash: sha256(token) },
-      select: { id: true, userId: true, activeTenantId: true, expiresAt: true, lastUsedAt: true, user: { select: { status: true, globalRole: true } } },
+      select: { id: true, userId: true, activeTenantId: true, expiresAt: true, lastUsedAt: true, user: { select: { status: true } } },
     });
     const now = Date.now();
     if (!session) return null;
@@ -71,7 +69,7 @@ export class SessionService {
     if (now - session.lastUsedAt.getTime() > TOUCH_INTERVAL_MS) {
       await this.prisma.session.update({ where: { id: session.id }, data: { lastUsedAt: new Date(now) } });
     }
-    return { id: session.id, userId: session.userId, activeTenantId: session.activeTenantId, globalRole: session.user.globalRole };
+    return { id: session.id, userId: session.userId, activeTenantId: session.activeTenantId };
   }
 
   async revoke(sessionId: string): Promise<void> {

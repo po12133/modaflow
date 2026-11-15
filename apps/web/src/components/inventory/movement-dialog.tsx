@@ -3,7 +3,7 @@
 import { ArrowDownToLine, ArrowUpFromLine, LoaderCircle, Scale } from "lucide-react";
 import { useState, useTransition } from "react";
 import { stockMovementAction } from "@/actions/products";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,12 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { variantLabel } from "@/lib/format";
+} from "@modaflow/ui/components/ui/dialog";
+import { Input } from "@modaflow/ui/components/ui/input";
+import { Label } from "@modaflow/ui/components/ui/label";
+import { variantLabel } from "@modaflow/ui/lib/format";
 import type { Variant } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 type Kind = "entry" | "exit" | "adjust_in" | "adjust_out";
 

@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { api, ApiError } from "@/lib/api";
-import type { ActionResult } from "@/types/actions";
+import type { ActionResult } from "@modaflow/ui/types/actions";
 import type { OrderIssue, OrderRequestResult } from "@/types/catalog";
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

@@ -1,23 +1,14 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentAuth } from '../auth/decorators.js';
 import { AppError } from '../common/app-error.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
-import { MAX_UPLOAD_BYTES } from '../images/image-processing.js';
+import { imageUpload } from '../images/image-upload.js';
 import { CurrentTenant, TenantRoles, TenantScoped } from '../tenancy/decorators.js';
 import { CreatePaymentRequestDto } from './dto/payments.dto.js';
 import { PaymentRequestsService } from './payment-requests.service.js';
-import { PlatformSettingsService } from './platform-settings.service.js';
-
-export const imageUpload = FileInterceptor('file', {
-  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 2 },
-  fileFilter: (_req, file, cb) =>
-    /^image\/(jpeg|png|webp)$/.test(file.mimetype)
-      ? cb(null, true)
-      : cb(new AppError(HttpStatus.UNSUPPORTED_MEDIA_TYPE, 'INVALID_IMAGE', 'Usa imágenes JPG, PNG o WebP.'), false),
-});
+import { PaymentInfoService } from './payment-info.service.js';
 
 @ApiTags('subscription payments')
 @TenantScoped()
@@ -25,7 +16,7 @@ export const imageUpload = FileInterceptor('file', {
 export class PaymentRequestsController {
   constructor(
     private readonly payments: PaymentRequestsService,
-    private readonly settings: PlatformSettingsService,
+    private readonly settings: PaymentInfoService,
   ) {}
 
   @Get('payment-info')

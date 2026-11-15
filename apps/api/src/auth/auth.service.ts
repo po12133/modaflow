@@ -15,7 +15,7 @@ export const MAX_FAILED_LOGINS = 5;
 export const LOCKOUT_MINUTES = 15;
 const RESET_TOKEN_TTL_MINUTES = 60;
 
-const USER_SELECT = { id: true, name: true, email: true, createdAt: true, globalRole: true } as const;
+const USER_SELECT = { id: true, name: true, email: true, createdAt: true } as const;
 
 @Injectable()
 export class AuthService {

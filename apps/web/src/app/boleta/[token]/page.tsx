@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
-import { LogoMark } from "@/components/brand";
+import { LogoMark } from "@modaflow/ui/components/brand";
 import { ReceiptView } from "@/components/sales/receipt-view";
 import { api, ApiError } from "@/lib/api";
 import type { Receipt } from "@/lib/types";

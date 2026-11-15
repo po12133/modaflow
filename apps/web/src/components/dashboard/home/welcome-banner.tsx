@@ -1,5 +1,5 @@
 import { PartyPopper } from "lucide-react";
-import { formatDate } from "@/lib/format";
+import { formatDate } from "@modaflow/ui/lib/format";
 
 export function WelcomeBanner({ storeName, expiresAt }: { storeName: string; expiresAt: string }) {
   return (

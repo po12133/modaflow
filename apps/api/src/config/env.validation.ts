@@ -177,18 +177,17 @@ export class EnvironmentVariables {
   S3_SIGNED_URL_TTL_SECONDS: number = 3_600;
 }
 
-/** Validates process.env at startup; the app refuses to boot on invalid config. */
-export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
-  const validated = plainToInstance(EnvironmentVariables, config, {
-    enableImplicitConversion: true,
-    excludeExtraneousValues: false,
-  });
-  const errors = validateSync(validated, { skipMissingProperties: false });
-  if (errors.length > 0) {
-    const details = errors
-      .map((e) => `${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`)
-      .join('; ');
-    throw new Error(`Invalid environment configuration -> ${details}`);
-  }
-  return validated;
+/** Builds a validator for process.env; the process refuses to boot on invalid config. */
+export function createEnvValidator<T extends object>(schema: new () => T) {
+  return (config: Record<string, unknown>): T => {
+    const validated = plainToInstance(schema, config, { enableImplicitConversion: true, excludeExtraneousValues: false });
+    const errors = validateSync(validated, { skipMissingProperties: false });
+    if (errors.length > 0) {
+      const details = errors.map((e) => `${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`).join('; ');
+      throw new Error(`Invalid environment configuration -> ${details}`);
+    }
+    return validated;
+  };
 }
+
+export const validateEnv = createEnvValidator(EnvironmentVariables);

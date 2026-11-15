@@ -7,7 +7,8 @@ import { LockedPanel } from "@/components/reports/ui/locked-panel";
 import { NoReportAccess } from "@/components/reports/ui/no-report-access";
 import { ReportShell } from "@/components/reports/ui/report-shell";
 import { getDashboardContext } from "@/lib/dal";
-import { periodParams, toQuery } from "@/lib/reports";
+import { periodParams } from "@/lib/reports";
+import { toQuery } from "@modaflow/ui/lib/query";
 import { getInventoryReport, getPaymentMethods, getProductsReport, getReportSummary, getSalesChart } from "@/services/reports";
 
 export const metadata: Metadata = { title: "Reportes" };

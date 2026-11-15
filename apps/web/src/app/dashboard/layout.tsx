@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Brand } from "@/components/brand";
+import { Brand } from "@modaflow/ui/components/brand";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { LogoutButton, StoreAvatar } from "@/components/dashboard/common";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { SubscriptionStrip } from "@/components/dashboard/subscription-strip";
 import { UsageMeter } from "@/components/dashboard/usage-meter";
 import { getDashboardContext } from "@/lib/dal";
-import { initials, ROLE_LABELS, STATUS_LABELS } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { initials, ROLE_LABELS, STATUS_LABELS } from "@modaflow/ui/lib/format";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export const metadata: Metadata = { title: { default: "Panel", template: "%s · ModaFlow" }, robots: { index: false } };
 

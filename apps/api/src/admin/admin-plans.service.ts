@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { AuditService } from '../audit/audit.service.js';
+import { AuditService } from './audit/audit.service.js';
 import { snapshotPlan, versionChanged, VERSIONED_FIELDS } from '../billing/plan-versions.js';
 import { AppError } from '../common/app-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';

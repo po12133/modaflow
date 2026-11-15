@@ -3,10 +3,10 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { PublishList } from "@/components/catalog-admin/publish-list";
 import { PageHeader } from "@/components/dashboard/common";
-import { Pagination } from "@/components/pagination";
+import { Pagination } from "@modaflow/ui/components/pagination";
 import { getDashboardContext } from "@/lib/dal";
-import { searchParam as one } from "@/lib/search-params";
-import { cn } from "@/lib/utils";
+import { searchParam as one } from "@modaflow/ui/lib/search-params";
+import { cn } from "@modaflow/ui/lib/utils";
 import { getCatalogProducts, getCatalogSettings } from "@/services/catalog";
 
 export const metadata: Metadata = { title: "Productos del catálogo" };

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { WhatsAppIcon } from "@/components/common/whatsapp-icon";
-import { initials } from "@/lib/format";
+import { initials } from "@modaflow/ui/lib/format";
 import { whatsappLink } from "@/lib/catalog";
 import type { PublicStore } from "@/types/catalog";
 import { CartLink } from "./cart-link";

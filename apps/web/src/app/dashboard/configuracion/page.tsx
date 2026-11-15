@@ -3,7 +3,7 @@ import { updateStoreAction } from "@/actions/store";
 import { PageHeader } from "@/components/dashboard/common";
 import { StoreForm } from "@/components/store/store-form";
 import { getDashboardContext } from "@/lib/dal";
-import { formatDate } from "@/lib/format";
+import { formatDate } from "@modaflow/ui/lib/format";
 
 export const metadata: Metadata = { title: "Configuración de la tienda" };
 

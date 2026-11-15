@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { PaymentStatusBadge } from "@/components/subscription/payment-history";
+import { PaymentStatusBadge } from "@modaflow/ui/components/payment-status-badge";
 import { PaymentInstructions } from "@/components/subscription/payment-instructions";
 import { ReceiptUploader } from "@/components/subscription/receipt-uploader";
 import { ApiError } from "@/lib/api";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@modaflow/ui/lib/format";
 import { getPaymentInfo, getPaymentRequest } from "@/services/billing";
 
 export const metadata: Metadata = { title: "Pago de suscripción" };

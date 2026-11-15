@@ -2,13 +2,14 @@
 // Requires DATABASE_URL pointing to a dedicated *_test database with migrations
 // and seed applied (see README "Pruebas"). Refuses to run on any other database.
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { Test, type TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { MailService } from './../src/mail/mail.service.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { ownerPrisma, testModule } from './support/db.js';
 
 const dbName = new URL(process.env['DATABASE_URL'] ?? 'postgresql://x/none').pathname.slice(1);
 if (!dbName.endsWith('_test')) {
@@ -59,15 +60,16 @@ describe('ModaFlow API (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleFixture: TestingModule = await testModule(AppModule, 'modaflow_app').compile();
     app = moduleFixture.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
-    prisma = app.get(PrismaService);
+    prisma = ownerPrisma();
     server = app.getHttpServer();
   });
 
   afterAll(async () => {
+    await prisma.$disconnect();
     await app.close();
   });
 

@@ -1,6 +1,8 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
-import type { ApiErrorBody } from "./types";
+import { ApiError, type ApiErrorBody } from "@modaflow/ui/lib/api-error";
+
+export { ApiError };
 
 /**
  * Server-side client for the ModaFlow API (backend-for-frontend pattern).
@@ -16,18 +18,6 @@ const API_URL = (
   "http://localhost:3001"
 ).replace(/\/$/, "");
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly body: ApiErrorBody,
-  ) {
-    super(Array.isArray(body.message) ? body.message.join(" ") : body.message);
-  }
-
-  get code() {
-    return this.body.code;
-  }
-}
 
 interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ImageOff } from "lucide-react";
 import { useState, useTransition } from "react";
 import { bulkPublishAction } from "@/actions/catalog";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@modaflow/ui/lib/format";
 import type { CatalogProductRow } from "@/types/catalog";
 import { PublishToggle } from "./publish-toggle";
 

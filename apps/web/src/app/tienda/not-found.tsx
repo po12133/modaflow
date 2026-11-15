@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Store } from "lucide-react";
-import { LogoMark } from "@/components/brand";
+import { LogoMark } from "@modaflow/ui/components/brand";
 
 export default function CatalogUnavailable() {
   return (

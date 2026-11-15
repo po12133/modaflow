@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setProductPublishedAction } from "@/actions/catalog";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export function PublishToggle({ id, published, disabled, label = "Mostrar en catálogo online" }: { id: string; published: boolean; disabled?: boolean; label?: string }) {
   const [value, setValue] = useState(published);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SaleStatusBadge } from "@/components/sales/sale-status-badge";
-import { formatDateTime, formatMoney, PAYMENT_LABELS } from "@/lib/format";
+import { formatDateTime, formatMoney, PAYMENT_LABELS } from "@modaflow/ui/lib/format";
 import type { SalesReportRow } from "@/types/reports";
 
 const HEADERS: [string, boolean][] = [

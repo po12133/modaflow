@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ChangePasswordForm, ProfileForm } from "@/components/account/account-forms";
 import { LogoutButton, PageHeader } from "@/components/dashboard/common";
 import { getDashboardContext } from "@/lib/dal";
-import { formatDate, ROLE_LABELS } from "@/lib/format";
+import { formatDate, ROLE_LABELS } from "@modaflow/ui/lib/format";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
 

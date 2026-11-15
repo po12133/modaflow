@@ -4,8 +4,8 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { api, ApiError } from "@/lib/api";
-import type { ActionResult } from "@/types/actions";
-import type { PaymentRequest } from "@/types/billing";
+import type { ActionResult } from "@modaflow/ui/types/actions";
+import type { PaymentRequest } from "@modaflow/ui/types/billing";
 
 const uuid = z.string().uuid();
 

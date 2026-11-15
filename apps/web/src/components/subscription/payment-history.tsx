@@ -1,12 +1,8 @@
 import Link from "next/link";
-import { METHOD_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_TONES, PERIOD_KIND_LABELS } from "@/config/billing";
-import { formatDate, formatMoney } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import type { PaymentRequest, SubscriptionPeriodRow } from "@/types/billing";
-
-export function PaymentStatusBadge({ status }: { status: PaymentRequest["status"] }) {
-  return <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold whitespace-nowrap", PAYMENT_STATUS_TONES[status])}>{PAYMENT_STATUS_LABELS[status]}</span>;
-}
+import { PaymentStatusBadge } from "@modaflow/ui/components/payment-status-badge";
+import { METHOD_LABELS, PERIOD_KIND_LABELS } from "@modaflow/ui/config/billing";
+import { formatDate, formatMoney } from "@modaflow/ui/lib/format";
+import type { PaymentRequest, SubscriptionPeriodRow } from "@modaflow/ui/types/billing";
 
 export function PaymentHistory({ payments, periods }: { payments: PaymentRequest[]; periods: SubscriptionPeriodRow[] }) {
   return (

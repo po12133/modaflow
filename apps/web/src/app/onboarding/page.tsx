@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Gift } from "lucide-react";
 import { onboardingAction } from "@/actions/store";
-import { Brand } from "@/components/brand";
+import { Brand } from "@modaflow/ui/components/brand";
 import { StoreForm } from "@/components/store/store-form";
 import { requireUser } from "@/lib/dal";
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { api } from "@/lib/api";
-import type { NotificationPage, PaymentInfo, PaymentRequest, SubscriptionPeriodRow } from "@/types/billing";
+import type { NotificationPage, PaymentInfo, PaymentRequest, SubscriptionPeriodRow } from "@modaflow/ui/types/billing";
 
 export const getPaymentInfo = () => api<PaymentInfo>("/subscription/payment-info");
 

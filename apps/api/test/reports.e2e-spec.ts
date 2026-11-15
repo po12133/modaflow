@@ -3,7 +3,6 @@
 // checked against the sales actually stored.
 import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { Test } from '@nestjs/testing';
 import ExcelJS from 'exceljs';
 import request from 'supertest';
 import type { Response as AgentResponse } from 'superagent';
@@ -12,6 +11,7 @@ import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { PasswordService } from './../src/auth/password.service.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { ownerPrisma, testModule } from './support/db.js';
 
 const dbName = new URL(process.env['DATABASE_URL'] ?? 'postgresql://x/none').pathname.slice(1);
 if (!dbName.endsWith('_test')) throw new Error(`E2E tests must run on a *_test database (got "${dbName}").`);
@@ -87,15 +87,16 @@ describe('Reports (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await testModule(AppModule, 'modaflow_app').compile();
     app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
-    prisma = app.get(PrismaService);
+    prisma = ownerPrisma();
     server = app.getHttpServer();
   });
 
   afterAll(async () => {
+    await prisma.$disconnect();
     await app.close();
   });
 

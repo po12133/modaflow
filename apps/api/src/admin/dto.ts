@@ -3,14 +3,12 @@ import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 import { Trim } from '../common/validation.js';
 import { PLATFORM_METHODS } from '../billing/dto/payments.dto.js';
+import { PageQueryDto } from '../common/page-query.dto.js';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const SUBSCRIPTION_STATUSES = ['TRIALING', 'ACTIVE', 'EXPIRED', 'SUSPENDED', 'CANCELED'] as const;
 
-export class PageQueryDto {
-  @ApiPropertyOptional({ default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(10_000) page?: number;
-  @ApiPropertyOptional({ default: 20 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize?: number;
-}
+export { PageQueryDto };
 
 export class TenantsQueryDto extends PageQueryDto {
   @ApiPropertyOptional({ description: 'Nombre, correo del propietario, WhatsApp o ID' }) @IsOptional() @IsString() @MaxLength(120) search?: string;

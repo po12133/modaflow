@@ -1,7 +1,11 @@
+import type { Paginated, SubscriptionStatus } from "@modaflow/ui/types/common";
+import type { ApiErrorBody } from "@modaflow/ui/lib/api-error";
+import type { FormState } from "@modaflow/ui/types/forms";
+
+export type { ApiErrorBody, FormState, Paginated, SubscriptionStatus };
 // Shapes returned by the ModaFlow API (see Swagger at /docs). Dates arrive as ISO strings.
 
 export type MembershipRole = "OWNER" | "ADMIN" | "SELLER";
-export type SubscriptionStatus = "TRIALING" | "ACTIVE" | "EXPIRED" | "CANCELED" | "SUSPENDED";
 export type UsagePeriod = "TOTAL" | "MONTHLY";
 export type CatalogAccess = "NONE" | "TEMPORARY" | "FULL";
 
@@ -10,7 +14,6 @@ export interface User {
   name: string;
   email: string;
   createdAt: string;
-  globalRole?: "SUPERADMIN" | "SUPPORT" | null;
 }
 
 export interface Me {
@@ -88,20 +91,8 @@ export interface Entitlements {
 }
 
 /** Error body returned by the API: { statusCode, code, message, errors? }. */
-export interface ApiErrorBody {
-  statusCode: number;
-  code?: string;
-  message: string | string[];
-  errors?: Record<string, string[]>;
-}
 
 /** State returned by form Server Actions to useActionState. */
-export interface FormState {
-  ok?: boolean;
-  message?: string;
-  fieldErrors?: Record<string, string[] | undefined>;
-  values?: Record<string, string>;
-}
 
 // ---------------------------------------------------------------------------
 // Stage 2: catalog, inventory, photos and AI
@@ -181,13 +172,6 @@ export interface ProductDetail {
   archivedAt: string | null;
 }
 
-export interface Paginated<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
 
 export interface InventoryItem {
   id: string;

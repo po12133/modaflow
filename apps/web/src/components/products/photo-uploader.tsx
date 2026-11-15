@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Camera, ImagePlus, LoaderCircle, Star, TriangleA
 import { useRef } from "react";
 import { deletePendingImageAction } from "@/actions/products";
 import type { ProductImage } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export const MAX_PHOTOS = 6;
 const ACCEPTED = /^image\/(jpeg|png|webp)$/;

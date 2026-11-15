@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { REQUEST_STATUS_LABELS, REQUEST_STATUS_TONES } from "@/config/catalog";
-import { formatDateTime, formatMoney } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { formatDateTime, formatMoney } from "@modaflow/ui/lib/format";
+import { cn } from "@modaflow/ui/lib/utils";
 import type { OrderRequestRow, RequestStatus } from "@/types/catalog";
 
 export function RequestStatusBadge({ status }: { status: RequestStatus }) {

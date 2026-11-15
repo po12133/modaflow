@@ -1,7 +1,7 @@
 import { Clock } from "lucide-react";
-import { plural } from "@/lib/format";
+import { plural } from "@modaflow/ui/lib/format";
 import type { Entitlements } from "@/lib/types";
-import type { PaymentRequest } from "@/types/billing";
+import type { PaymentRequest } from "@modaflow/ui/types/billing";
 
 export function Notices({ subscription, pending }: { subscription: Entitlements; pending?: PaymentRequest }) {
   return (

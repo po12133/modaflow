@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: monorepoRoot,
   poweredByHeader: false,
+  transpilePackages: ["@modaflow/ui"],
   ...(pollIntervalMs ? { watchOptions: { pollIntervalMs } } : {}),
   cacheComponents: true,
   partialPrefetching: true,

@@ -8,7 +8,6 @@
 // ANTHROPIC_API_KEY is set.
 import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { Test } from '@nestjs/testing';
 import sharp from 'sharp';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
@@ -22,6 +21,7 @@ import {
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { ownerPrisma, testModule } from './support/db.js';
 
 const dbName = new URL(process.env['DATABASE_URL'] ?? 'postgresql://x/none').pathname.slice(1);
 if (!dbName.endsWith('_test')) throw new Error(`E2E tests must run on a *_test database (got "${dbName}").`);
@@ -130,18 +130,19 @@ describe('Catalog, inventory and AI (e2e)', () => {
 
   beforeAll(async () => {
     defaultPhoto = await photo();
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    const moduleRef = await testModule(AppModule, 'modaflow_app')
       .overrideProvider(GarmentRecognizer)
       .useValue(fake)
       .compile();
     app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
-    prisma = app.get(PrismaService);
+    prisma = ownerPrisma();
     server = app.getHttpServer();
   });
 
   afterAll(async () => {
+    await prisma.$disconnect();
     await app.close();
   });
 

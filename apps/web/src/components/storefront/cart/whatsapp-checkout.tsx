@@ -4,7 +4,7 @@ import { LoaderCircle } from "lucide-react";
 import { useState, useTransition } from "react";
 import { createOrderRequestAction, markWhatsappOpenedAction } from "@/actions/storefront";
 import { WhatsAppIcon } from "@/components/common/whatsapp-icon";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@modaflow/ui/lib/format";
 import type { OrderIssue, OrderRequestResult } from "@/types/catalog";
 import { useCart } from "./cart-provider";
 

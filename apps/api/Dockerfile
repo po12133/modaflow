@@ -25,6 +25,8 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
+COPY apps/admin-web/package.json apps/admin-web/
+COPY packages/ui/package.json packages/ui/
 RUN npm ci --workspace @modaflow/api --include-workspace-root=false \
  && mkdir -p apps/api/node_modules
 
@@ -34,9 +36,8 @@ ENV NODE_ENV=development
 COPY apps/api apps/api
 WORKDIR /app/apps/api
 EXPOSE 3001
-# Generate the client, apply pending migrations (never resets data) and load
-# the plan catalog (idempotent upsert) before starting the watcher.
-CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && npx prisma db seed && npm run start:dev"]
+# Migrations, seed and database roles run in the one-shot "migrate" service.
+CMD ["sh", "-c", "npx prisma generate && npm run start:dev"]
 
 # ---------- build ----------
 FROM deps AS build
@@ -48,6 +49,8 @@ FROM base AS prod-deps
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
+COPY apps/admin-web/package.json apps/admin-web/
+COPY packages/ui/package.json packages/ui/
 # Note: @prisma/client declares the Prisma CLI as a peer dependency, so npm keeps
 # it even with --omit=dev. That is intentional here: it allows running
 # `npx prisma migrate deploy` inside the production container once models exist.
@@ -72,6 +75,7 @@ COPY --from=build --chown=node:node /app/apps/api/prisma7.config.ts ./apps/api/p
 USER node
 WORKDIR /app/apps/api
 EXPOSE 3001
-# On every start: apply pending versioned migrations (`migrate deploy` never
-# drops data or resets the database), upsert the plan catalog, then serve.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && exec node dist/main.js"]
+# Subscriber API by default. The same image runs the admin API
+# (node dist/admin-main.js) and the one-shot migrate service with its own
+# command and database credentials (see deploy/*/compose.yaml).
+CMD ["node", "dist/main.js"]

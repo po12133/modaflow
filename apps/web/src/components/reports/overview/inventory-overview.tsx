@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { InventoryReport } from "@/types/reports";
-import { Panel } from "@/components/common/panel";
+import { Panel } from "@modaflow/ui/components/panel";
 
 export function InventoryOverview({ inventory, href }: { inventory: InventoryReport; href: string }) {
   const stats: [string, number][] = [

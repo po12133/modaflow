@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { AddToCart } from "@/components/storefront/product/add-to-cart";
 import { Gallery } from "@/components/storefront/product/gallery";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@modaflow/ui/lib/format";
 import { siteOrigin } from "@/services/site";
 import { getPublicProduct, getPublicStore } from "@/services/storefront";
 

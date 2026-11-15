@@ -10,14 +10,14 @@ import {
   type ActionResult,
   updateProductAction,
 } from "@/actions/products";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { formatDate } from "@/lib/format";
+import { Alert, AlertDescription } from "@modaflow/ui/components/ui/alert";
+import { Button } from "@modaflow/ui/components/ui/button";
+import { Input } from "@modaflow/ui/components/ui/input";
+import { Label } from "@modaflow/ui/components/ui/label";
+import { Textarea } from "@modaflow/ui/components/ui/textarea";
+import { formatDate } from "@modaflow/ui/lib/format";
 import type { AiUsage, Category, GarmentSuggestion, ProductDetail } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 import { type Photo, PhotoUploader, photosFromImages } from "./photo-uploader";
 import { TagInput } from "./tag-input";
 import { newRow, VariantEditor, type VariantMode, type VariantRow } from "./variant-editor";

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CircleCheck } from "lucide-react";
-import { AuthHeader } from "@/components/auth/auth-card";
+import { AuthHeader } from "@modaflow/ui/components/auth-card";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = { title: "Iniciar sesión" };

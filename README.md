@@ -2,17 +2,26 @@
 
 Monorepo (npm workspaces) con la configuración inicial de ModaFlow:
 
-| Servicio   | Tecnología                                            | Carpeta     | Puerto |
-|------------|-------------------------------------------------------|-------------|--------|
-| `web`      | Next.js 16 (App Router) · React 19 · Tailwind 4 · shadcn/ui | `apps/web`  | 3000   |
-| `api`      | NestJS 12 · Prisma 7 · Swagger                        | `apps/api`  | 3001   |
-| `postgres` | PostgreSQL 18                                         | —           | 5432   |
+Dos sistemas sobre una sola base de datos: el de los **suscriptores** (tiendas) y el de **administración**
+(equipo de ModaFlow), con dominios, sesiones, cuentas y usuarios de PostgreSQL separados.
+
+| Servicio    | Sistema        | Tecnología                                            | Carpeta          | Puerto (dev) |
+|-------------|----------------|-------------------------------------------------------|------------------|--------------|
+| `web`       | Suscriptores   | Next.js 16 (App Router) · React 19 · Tailwind 4 · shadcn/ui | `apps/web`  | 3000 |
+| `api`       | Suscriptores   | NestJS 12 · Prisma 7 · Swagger (`dist/main.js`)       | `apps/api`       | 3001 |
+| `admin-web` | Administración | Next.js 16 · mismo diseño (`@modaflow/ui`)            | `apps/admin-web` | 3002 |
+| `admin-api` | Administración | NestJS 12, mismo proyecto que `api` (`dist/admin-main.js`) | `apps/api`  | 3003 (solo dev) |
+| `migrate`   | Ambos          | Tarea única: migraciones, seed y usuarios de PostgreSQL | `apps/api`     | — |
+| `postgres`  | Ambos          | PostgreSQL 18 (esquemas `public` y `admin`)           | —                | 5432 |
 
 ```text
 modaflow/
 ├── apps/
-│   ├── web/                 # Next.js (output standalone) + Dockerfile
-│   └── api/                 # NestJS + Prisma + Dockerfile
+│   ├── web/                 # Web de suscriptores (Next.js standalone) + Dockerfile
+│   ├── admin-web/           # Web de administración (Next.js standalone) + Dockerfile
+│   └── api/                 # NestJS + Prisma: API de suscriptores, API admin, CLI y migraciones
+├── packages/
+│   └── ui/                  # @modaflow/ui: componentes, estilos, formatos y tipos compartidos
 ├── deploy/
 │   ├── development/compose.yaml   # hot reload
 │   ├── staging/compose.yaml       # réplica de producción / Coolify
@@ -59,7 +68,12 @@ Usa una contraseña segura para URL (letras y números), por ejemplo `openssl ra
 | `WEB_APP_URL` | privada | api | URL pública del frontend, para los enlaces de recuperación de contraseña |
 | `API_INTERNAL_URL` | privada | web (servidor) | URL interna de la API para Next.js (`http://api:3001`, la fija cada compose) |
 | `NEXT_PUBLIC_API_URL` | **pública** | web | URL pública de la API. Se incrusta en el bundle **al construir** |
-| `SCHEDULER_ENABLED` | privada | api | `false` desactiva el job de vencimientos en esa réplica (por defecto activo) |
+| `SCHEDULER_ENABLED` | privada | admin-api | `false` desactiva el job de vencimientos en esa réplica (por defecto activo) |
+| `APP_DB_PASSWORD` | **secreta** | migrate, api | Contraseña del usuario de PostgreSQL `modaflow_app` (API de suscriptores). Obligatoria en staging/producción, mínimo 16 caracteres |
+| `ADMIN_DB_PASSWORD` | **secreta** | migrate, admin-api | Contraseña del usuario de PostgreSQL `modaflow_admin` (API admin). Obligatoria en staging/producción, mínimo 16 caracteres |
+| `ADMIN_WEB_URL` | privada | admin-api | URL pública del panel admin: enlaces de acceso del equipo y origen permitido |
+| `ADMIN_SESSION_TTL_HOURS` / `ADMIN_SESSION_IDLE_MINUTES` | privada | admin-api | Duración máxima (8 h) e inactividad máxima (60 min) de la sesión del equipo |
+| `ADMIN_API_INTERNAL_URL` | privada | admin-web | URL interna de la API admin (la fija cada compose) |
 
 Separación público/privado: el contenedor `web` solo recibe `API_INTERNAL_URL` y `NEXT_PUBLIC_API_URL`; nunca recibe
 credenciales de PostgreSQL. Cualquier variable `NEXT_PUBLIC_*` es visible en el navegador: no pongas secretos ahí.
@@ -322,21 +336,11 @@ ocultar o un cambio de plan se reflejan de inmediato sin invalidaciones manuales
 
 ## Arquitectura (Etapa 6: superadministración, suscripciones, pagos manuales y auditoría)
 
-**Roles globales**: `users.global_role` (`SUPERADMIN`, y `SUPPORT` preparado para soporte de solo lectura) es
-independiente de los roles dentro de un negocio. El área `/admin` (web) y `/admin/*` (API) exige rol global con
-`@AdminArea()` (lectura, ambos roles) o `@SuperadminOnly()` (acciones). Sin rol global, `/admin` responde 404.
-Ningún endpoint asigna roles globales y el primer usuario registrado **no** es superadministrador.
+**Equipo de ModaFlow**: desde la separación de sistemas (ver la sección siguiente) el personal vive en
+`admin.staff` (roles `SUPERADMIN` y `SUPPORT` de solo lectura), con su propio login en el sistema de administración.
+Los endpoints de administración usan `@AdminArea()` (lectura, ambos roles) o `@SuperadminOnly()` (acciones).
 
-**Primer superadministrador** (la persona se registra antes de forma normal; el CLI nunca crea usuarios ni toca
-contraseñas, cierra las sesiones del usuario y deja registro en auditoría):
-
-```bash
-npm run admin:grant -w @modaflow/api -- persona@empresa.com                 # desarrollo
-docker compose exec api node dist/cli/grant-superadmin.js persona@empresa.com  # contenedor (Coolify: terminal del servicio api)
-# Opciones: --role SUPPORT   --revoke   (no permite quitar el último superadministrador)
-```
-
-**Planes versionados**: los planes se editan en `/admin/planes`. Cambiar precio, límites o funciones crea una nueva
+**Planes versionados**: los planes se editan en el panel admin (`/planes`). Cambiar precio, límites o funciones crea una nueva
 `plan_versions`; cada suscripción guarda la versión contratada (`subscriptions.plan_version_id`) y los límites salen de
 esa versión, así que un cambio de precio no altera periodos ya contratados. La versión nueva se aplica al renovar,
 activar o cambiar de plan.
@@ -350,26 +354,26 @@ calendario:
   `subscription_history` y en la auditoría; cada pago aprobado crea un `subscription_periods` (único por solicitud).
 
 **Pagos manuales** (sin pasarela): QR bancario de ModaFlow (imagen en S3) y transferencia, configurados en
-`/admin/configuracion?tab=pagos`. Flujo del suscriptor en `/dashboard/suscripcion`: crear solicitud → ver instrucciones
+`/configuracion?tab=pagos` del panel admin. Flujo del suscriptor en `/dashboard/suscripcion`: crear solicitud → ver instrucciones
 con el importe → subir comprobante → confirmar → revisión. El importe lo calcula siempre el servidor desde la versión
 vigente del plan (nunca del navegador). La aprobación es transaccional: bloquea la fila, exige estado `PENDING` y
 comprobante enviado; una segunda aprobación responde 409 `PAYMENT_ALREADY_REVIEWED`. Solo se admite una solicitud
 pendiente por negocio. Los registros financieros no se pueden borrar desde la interfaz.
 
-**Ingresos y métricas** (`/admin`, `/admin/estadisticas`): ingresos = suma de `amount_confirmed` de pagos aprobados;
+**Ingresos y métricas** (inicio y `/estadisticas` del panel admin): ingresos = suma de `amount_confirmed` de pagos aprobados;
 MRR = precios mensuales de las versiones contratadas de suscripciones de pago activas; ARPU = MRR / negocios que pagan;
 además conversión de prueba a pago, altas, vencimientos y uso agregado (sin datos individuales de las tiendas).
 
 **Vencimientos**: un job cada 10 minutos (`@nestjs/schedule`, con *advisory lock* de PostgreSQL y
 `FOR UPDATE SKIP LOCKED`, seguro con varias réplicas) marca suscripciones vencidas y genera avisos de vencimiento
 próximo. La autorización **no depende del job**: `EntitlementsService` calcula el estado efectivo en cada petición.
-`SCHEDULER_ENABLED=false` desactiva el job en una réplica.
+El job corre en `admin-api`; `SCHEDULER_ENABLED=false` lo desactiva en una réplica.
 
-**Notificaciones**: dentro de la plataforma (`/dashboard/notificaciones`, `/admin/notificaciones`), deduplicadas con
+**Notificaciones**: dentro de la plataforma (`/dashboard/notificaciones` y `/notificaciones` del panel admin), deduplicadas con
 `dedupe_key` único. El correo queda **pendiente**: no hay SMTP configurado, los avisos se marcan `SKIPPED` y
 [mail.service.ts](apps/api/src/mail/mail.service.ts) es el único punto a completar.
 
-**Auditoría** (`/admin/auditoria`): `admin_audit_logs` es de solo inserción (un *trigger* de PostgreSQL rechaza
+**Auditoría** (`/auditoria` del panel admin): `admin.audit_logs` es de solo inserción (un *trigger* de PostgreSQL rechaza
 `UPDATE` y `DELETE`). Guarda actor, acción, entidad, antes/después, motivo, IP y resultado; elimina claves sensibles
 (contraseñas, hashes, tokens, claves) antes de guardar. Suspender negocios o usuarios, extender pruebas y revisar
 pagos exige motivo.
@@ -381,7 +385,7 @@ autenticación) solo existen en variables de entorno y no se pueden ver ni edita
 **Fuera de alcance**: pasarelas de pago, cobro recurrente automático, facturación fiscal, WhatsApp Business API,
 acceso a la cuenta de un suscriptor (impersonación) y borrado permanente de negocios.
 
-**Endpoints** (Swagger, etiquetas `admin` y `billing`): suscriptor `GET /subscription/payment-info`,
+**Endpoints** (Swagger de cada API): suscriptor `GET /subscription/payment-info`,
 `GET|POST /subscription/payment-requests`, `GET /subscription/payment-requests/:id`,
 `POST /subscription/payment-requests/:id/receipt|submit|cancel`, `GET /subscription/periods`,
 `GET /notifications`, `POST /notifications/read-all`, `POST /notifications/:id/read`. Administración:
@@ -393,6 +397,62 @@ acceso a la cuenta de un suscriptor (impersonación) y borrado permanente de neg
 (pago manual registrado por el administrador), `POST /admin/subscriptions/:id/extend-trial`,
 `POST /admin/subscriptions/:id/suspend|reactivate|cancel`; `GET /admin/payments`, `/admin/payments/:id`,
 `POST /admin/payments/:id/approve|reject`; `GET|PATCH /admin/settings`, `POST /admin/settings/payment-qr`.
+
+## Arquitectura (sistemas separados: suscriptores y administración)
+
+**Dos sistemas, una base de datos.** La web de suscriptores (`modaflow.amicornios.com`) y la de administración
+(`admin.modaflow.amicornios.com`) son aplicaciones, procesos y contenedores distintos. Comparten PostgreSQL para que
+las operaciones críticas sigan siendo una sola transacción (aprobar un pago actualiza suscripción, periodo y auditoría
+a la vez) sin sincronizar datos entre sistemas.
+
+```text
+admin.modaflow…  admin-web ──(red privada)──► admin-api ──┐ usuario modaflow_admin
+modaflow…        web ───────(red privada)──► api ─────────┤ usuario modaflow_app
+                                                          ▼
+                       PostgreSQL: esquema public (negocios, usuarios, ventas, pagos)
+                                   esquema admin  (equipo, sesiones del equipo, auditoría)
+```
+
+- **Cuentas separadas**: el equipo vive en `admin.staff`, no en `users`. Una cuenta de tienda no sirve en el panel
+  admin y viceversa. `users.global_role` ya no existe.
+- **Sesiones separadas**: cookie `mf_admin_session` (HttpOnly, `SameSite=Strict`) en el dominio admin, con duración
+  máxima de 8 h y cierre por inactividad de 60 min. Bloqueo tras 5 intentos fallidos. Contraseñas del equipo de
+  12 caracteres como mínimo.
+- **La API admin no tiene dominio público**: solo `admin-web` la llama por la red interna de Docker.
+- **La API de suscriptores no contiene código de administración**: `src/admin/**` solo se carga en `admin-main.ts`, y
+  una regla de lint (`no-restricted-imports` en `.oxlintrc.json`) impide importarlo desde el resto.
+- **Separación impuesta por PostgreSQL** (migración `20261115220000_admin_schema_staff`):
+
+  | Usuario | Lo usa | Puede | No puede |
+  |---|---|---|---|
+  | `modaflow` (dueño) | solo `migrate` | todo | — |
+  | `modaflow_app` | `api` | sus datos; crear la suscripción al registrarse | ver el esquema `admin`; cambiar plan, estado o fechas de una suscripción; editar planes, versiones o configuración; aprobar pagos; borrar historial financiero |
+  | `modaflow_admin` | `admin-api` | esquema `admin` (auditoría solo inserción); leer datos de negocio; operar suscripciones, pagos, planes y configuración; suspender usuarios | leer contraseñas o tokens de los clientes; borrar negocios, ventas o registros financieros; modificar la auditoría |
+
+- **Primer acceso del equipo** (no hay usuarios ni contraseñas por defecto). El CLI corre en el contenedor
+  `admin-api`, crea al miembro y entrega un **enlace de un solo uso** (24 h) para que elija su contraseña en
+  `/acceso`. La contraseña nunca pasa por la terminal:
+
+  ```bash
+  docker compose -f deploy/development/compose.yaml exec admin-api npm run staff -- invite persona@empresa.com --name "Nombre Apellido"
+  # Producción (Coolify → servicio admin-api → Terminal):
+  node dist/cli/staff.js invite persona@empresa.com --name "Nombre Apellido" [--role SUPPORT]
+  node dist/cli/staff.js reset persona@empresa.com     # nuevo enlace (olvido de contraseña); cierra sus sesiones
+  node dist/cli/staff.js disable persona@empresa.com   # no permite dejar sin superadministradores
+  node dist/cli/staff.js enable persona@empresa.com
+  node dist/cli/staff.js list
+  ```
+
+  Cada miembro puede cambiar su contraseña en **Mi cuenta** (`/cuenta`); se cierran sus otras sesiones.
+- **Migración de datos**: los superadministradores existentes pasaron a `admin.staff` con el mismo id y la misma
+  contraseña, la auditoría se movió a `admin.audit_logs` sin perder filas, y las columnas de autoría (revisó el pago,
+  creó la versión, registró el periodo, editó la configuración) apuntan ahora a `admin.staff`. El historial de
+  suscripciones distingue `actor_id` (cliente) de `actor_staff_id` (equipo).
+- **Código compartido**: `packages/ui` (`@modaflow/ui`) contiene componentes base (shadcn), estilos, formularios,
+  formatos, gráficos, etiquetas de facturación y tipos comunes. Ambas webs lo compilan con `transpilePackages`.
+
+**Endpoints de la API admin** (además de los de administración de la Etapa 6): `POST /auth/login`, `POST /auth/logout`,
+`GET /auth/me`, `POST /auth/setup-password` (enlace de un solo uso) y `POST /auth/password` (cambio propio).
 
 ## Desarrollo con Docker (recomendado)
 
@@ -415,7 +475,13 @@ docker compose -f deploy/development/compose.yaml down -v
 `--env-file .env` es opcional: sin él se usan valores por defecto solo aptos para desarrollo local.
 Atajos equivalentes: `npm run docker:dev`, `npm run docker:dev:down`, `npm run docker:dev:logs`.
 
-- **Hot reload**: se montan `apps/web/src`, `apps/web/public`, `apps/api/src`, `apps/api/prisma` y `apps/api/test`.
+- Al iniciar, el servicio `migrate` aplica migraciones, carga los planes que falten y asigna las contraseñas de los
+  usuarios `modaflow_app` y `modaflow_admin` (en desarrollo con valores por defecto solo locales). Después arrancan
+  `api` y `admin-api`, cada uno con su usuario.
+- Si `docker compose ... up --build` falla con `failed to execute bake`, construye las imágenes con
+  `docker buildx build --target dev -f apps/api/Dockerfile -t modaflow-dev-api -t modaflow-dev-admin-api -t modaflow-dev-migrate .`
+  (y lo mismo para `apps/web` y `apps/admin-web`) y luego `docker compose ... up -d --no-build`.
+- **Hot reload**: se montan `apps/web/src`, `apps/admin-web/src`, `packages/ui/src`, `apps/api/src`, `apps/api/prisma` y `apps/api/test`.
   Los cambios en esas carpetas se recargan solos. Si cambias dependencias (`package.json`) o archivos de
   configuración (`next.config.ts`, `tsconfig.json`...), reconstruye con `up -d --build`.
 - En Docker Desktop (Windows/macOS) los bind mounts no propagan eventos de archivos, por lo que el compose
@@ -426,8 +492,10 @@ Atajos equivalentes: `npm run docker:dev`, `npm run docker:dev:down`, `npm run d
 
 | Qué | URL |
 |---|---|
-| Frontend | http://localhost:3000 |
-| Backend | http://localhost:3001 |
+| Web de suscriptores | http://localhost:3000 |
+| Web de administración | http://localhost:3002 (login del equipo en `/login`) |
+| API de suscriptores | http://localhost:3001 |
+| API admin (Swagger solo en desarrollo) | http://localhost:3003/docs (solo en `127.0.0.1`) |
 | Health check | http://localhost:3001/health |
 | Swagger UI | http://localhost:3001/docs (JSON: `/docs-json`) |
 | PostgreSQL | `localhost:5432` (solo en `127.0.0.1`), usuario/contraseña de `.env`, base `modaflow` |
@@ -469,6 +537,8 @@ npm install                                   # npm 11
 docker compose -f deploy/development/compose.yaml --env-file .env up -d postgres
 npm run dev:api                               # http://localhost:3001 (lee ../../.env)
 npm run dev:web                               # http://localhost:3000
+PORT=3003 npm run dev:admin-api               # API admin; necesita DATABASE_URL del usuario modaflow_admin
+npm run dev:admin-web                         # http://localhost:3002
 ```
 
 Otros comandos: `npm run build`, `npm run lint`, `npm run prisma:generate`.
@@ -518,7 +588,15 @@ Las pruebas e2e cubren:
   contratado, job de vencimientos idempotente sin avisos duplicados, auditoría inmutable sin datos sensibles,
   ingresos solo de pagos aprobados, MRR/ARPU y configuración sin secretos.
 
+- **Sistemas separados:** cada API corre en las pruebas con su propio usuario de PostgreSQL (`current_user` verificado);
+  sin rutas `/admin` en la API de suscriptores; cookies y cuentas no intercambiables; enlace de acceso de un solo uso;
+  contraseñas fuertes del equipo; bloqueo tras intentos fallidos; cambio de contraseña; soporte de solo lectura; y
+  pruebas SQL directas de lo que cada usuario de PostgreSQL no puede hacer (`test/db-roles.e2e-spec.ts`).
+
 Los archivos e2e se ejecutan uno tras otro (`fileParallelism: false`) porque comparten la misma base de datos de prueba.
+`DATABASE_URL` debe ser el dueño de `modaflow_test` (para preparar datos); las apps se conectan con `modaflow_app` y
+`modaflow_admin` usando `APP_DB_PASSWORD` y `ADMIN_DB_PASSWORD` (por defecto, las de desarrollo). La primera vez,
+asigna esas contraseñas en la base de prueba con `npm run db:roles -w @modaflow/api` (con `DATABASE_URL` de prueba).
 
 En las pruebas de créditos, el modelo de visión se reemplaza por un **doble de prueba**: se prueba la lógica real de
 créditos y no se simula a Claude. La llamada real a Claude tiene su propia prueba, que solo se ejecuta con clave:
@@ -527,7 +605,7 @@ créditos y no se simula a Claude. La llamada real a Claude tiene su propia prue
 ANTHROPIC_API_KEY=sk-ant-... AI_TEST_IMAGE=/ruta/a/foto-de-prenda.jpg npm run test:e2e
 ```
 
-Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
+Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>` (se guardan en `packages/ui`, compartidos por ambas webs).
 
 ## Prisma
 
@@ -546,7 +624,9 @@ Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
   `20261115040424_sale_movement_types`, `20261115040539_sales_pos_receipts`, `20261115120000_reports_costs_timezone`, `20261115180000_online_catalog` (rellena
   el slug de los productos existentes), `20261115200000_subscription_suspended` (valor de enum, aparte) y
   `20261115200100_saas_admin_billing` (crea la versión 1 de cada plan, enlaza las suscripciones existentes, registra los
-  periodos de prueba vigentes, la configuración inicial, las restricciones `CHECK` y el *trigger* de auditoría). Desde la segunda solo agregan tablas,
+  periodos de prueba vigentes, la configuración inicial, las restricciones `CHECK` y el *trigger* de auditoría) y
+  `20261115220000_admin_schema_staff` (esquema `admin`, equipo, sesiones, traslado de la auditoría y usuarios de
+  PostgreSQL con permisos; corre dentro de una transacción). Desde la segunda solo agregan tablas,
   valores de enum, columnas con valor por defecto o nulas (`tenants.product_seq`, `tenants.sale_seq`,
   `inventory_movements.sale_id`) y restricciones, sin cambios destructivos. Los valores nuevos del enum de
   movimientos van en una migración aparte porque PostgreSQL no permite usarlos en la misma transacción que los crea.
@@ -565,10 +645,14 @@ Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
 
 [deploy/production/compose.yaml](deploy/production/compose.yaml) construye imágenes multi-stage:
 
-- **web**: Next.js `output: "standalone"`, usuario no root, sin `node_modules` completos (~300 MB).
-- **api**: NestJS compilado (`dist/`), solo dependencias de producción (incluye el CLI de Prisma para migraciones).
+- **web** y **admin-web**: Next.js `output: "standalone"`, usuario no root, sin `node_modules` completos.
+- **api** y **admin-api**: la misma imagen NestJS compilada (`dist/main.js` y `dist/admin-main.js`), cada una con su
+  usuario de PostgreSQL. `admin-api` no tiene dominio.
+- **migrate**: tarea única en cada despliegue (`prisma migrate deploy`, seed de planes faltantes y contraseñas de los
+  usuarios restringidos). Es el único servicio con la contraseña del dueño de la base. Termina con código 0 y las APIs
+  arrancan después (`service_completed_successfully`).
 - **postgres**: volumen persistente `postgres_data`, **sin puertos publicados** (solo red interna `modaflow`).
-- Healthchecks en los tres servicios y `restart: unless-stopped`.
+- Healthchecks en los servicios permanentes y `restart: unless-stopped`.
 - Los contextos de build apuntan a la raíz del repositorio (`../..`), necesario por los npm workspaces.
 
 Validar y probar localmente:
@@ -603,6 +687,9 @@ docker compose -f deploy/production/compose.yaml --env-file .env down
    |---|---|
    | `web` | `https://modaflow.amicornios.com:3000` |
    | `api` | `https://api.modaflow.amicornios.com:3001` |
+   | `admin-web` | `https://admin.modaflow.amicornios.com:3000` |
+   | `admin-api` | *(ninguno — solo red interna)* |
+   | `migrate` | *(ninguno — tarea única)* |
    | `postgres` | *(ninguno — no exponer)* |
 
 5. **Environment Variables** en Coolify:
@@ -612,6 +699,9 @@ docker compose -f deploy/production/compose.yaml --env-file .env down
    | `POSTGRES_PASSWORD` | contraseña segura (obligatoria, URL-safe) |
    | `POSTGRES_USER` | `modaflow` (opcional) |
    | `POSTGRES_DB` | `modaflow` (opcional) |
+   | `APP_DB_PASSWORD` | contraseña del usuario `modaflow_app` (obligatoria, URL-safe, distinta de las otras) |
+   | `ADMIN_DB_PASSWORD` | contraseña del usuario `modaflow_admin` (obligatoria, URL-safe, distinta de las otras) |
+   | `ADMIN_WEB_URL` | `https://admin.modaflow.amicornios.com` |
    | `NEXT_PUBLIC_API_URL` | `https://api.modaflow.amicornios.com` (se usa como build arg de `web`) |
    | `CORS_ORIGINS` | `https://modaflow.amicornios.com` |
    | `SWAGGER_ENABLED` | `false` (o `true` si quieres Swagger público) |
@@ -630,8 +720,13 @@ docker compose -f deploy/production/compose.yaml --env-file .env down
      `S3_ENDPOINT`. El navegador abre las URLs firmadas en ese mismo host, así que debe ser accesible desde internet.
 
    Si cambias `NEXT_PUBLIC_API_URL`, haz **redeploy** (el valor se incrusta al construir).
-6. DNS y certificados: se configuran después desde Coolify (registros A de ambos dominios hacia el servidor;
-   Coolify emite los certificados al asignar los dominios).
+6. DNS y certificados: se configuran después desde Coolify (registros A de los tres dominios —web, api y admin—
+   hacia el servidor; Coolify emite los certificados al asignar los dominios).
+7. **Después del primer despliegue**: invita al primer superadministrador desde la terminal del servicio
+   `admin-api` (`node dist/cli/staff.js invite ...`, ver la sección de sistemas separados) y abre el enlace.
+   Opcional: restringe `admin.modaflow.amicornios.com` por IP o VPN desde el proxy de Coolify.
+8. El servicio `migrate` termina después de cada despliegue (estado *exited*, código 0). Es lo esperado: no lo
+   reinicies ni le asignes dominio.
 
 ## Staging
 
@@ -667,13 +762,16 @@ Crea un **segundo recurso** (mismo repositorio, mismo build pack `Docker Compose
 | **Docker Compose Location** | `/compose.yaml` |
 | Dominio `web` | `https://staging.modaflow.amicornios.com:3000` |
 | Dominio `api` | `https://api.staging.modaflow.amicornios.com:3001` |
-| Dominio `postgres` | *(ninguno)* |
+| Dominio `admin-web` | `https://admin.staging.modaflow.amicornios.com:3000` |
+| Dominio `admin-api`, `migrate`, `postgres` | *(ninguno)* |
 
 Variables de entorno de staging (distintas de producción, **otra contraseña**):
 
 | Variable | Valor |
 |---|---|
 | `POSTGRES_PASSWORD` | contraseña propia de staging (obligatoria) |
+| `APP_DB_PASSWORD` / `ADMIN_DB_PASSWORD` | contraseñas propias de staging (obligatorias, distintas de producción) |
+| `ADMIN_WEB_URL` | `https://admin.staging.modaflow.amicornios.com` |
 | `NEXT_PUBLIC_API_URL` | `https://api.staging.modaflow.amicornios.com` |
 | `CORS_ORIGINS` | `https://staging.modaflow.amicornios.com` |
 | `SWAGGER_ENABLED` | `true` (o `false`) |

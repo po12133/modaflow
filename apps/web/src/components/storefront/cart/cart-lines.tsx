@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ImageOff, Minus, Plus, Trash2 } from "lucide-react";
 import { CART_MAX_QUANTITY } from "@/config/catalog";
 import { lineTotal } from "@/lib/catalog";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@modaflow/ui/lib/format";
 import { useCart } from "./cart-provider";
 
 export function CartLines({ base }: { base: string }) {

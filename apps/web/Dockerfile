@@ -25,12 +25,15 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/
 COPY apps/api/package.json apps/api/
+COPY apps/admin-web/package.json apps/admin-web/
+COPY packages/ui/package.json packages/ui/
 RUN npm ci --workspace @modaflow/web --include-workspace-root=false \
  && mkdir -p apps/web/node_modules
 
 # ---------- dev (hot reload; source is bind-mounted by compose) ----------
 FROM deps AS dev
 ENV NODE_ENV=development
+COPY packages/ui packages/ui
 COPY apps/web apps/web
 WORKDIR /app/apps/web
 EXPOSE 3000
@@ -41,6 +44,7 @@ FROM deps AS build
 # Public variables are inlined into the client bundle at build time.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+COPY packages/ui packages/ui
 COPY apps/web apps/web
 RUN npm run build --workspace @modaflow/web
 

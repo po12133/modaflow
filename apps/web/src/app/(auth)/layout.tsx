@@ -1,5 +1,5 @@
 import { Camera, ChartColumn, ShoppingBag } from "lucide-react";
-import { Brand } from "@/components/brand";
+import { Brand } from "@modaflow/ui/components/brand";
 
 const VALUE_PROPS = [
   { icon: Camera, text: "Registra prendas con fotos y deja el cuaderno." },

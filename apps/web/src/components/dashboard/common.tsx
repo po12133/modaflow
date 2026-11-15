@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Construction, LogOut } from "lucide-react";
 import { logoutAction } from "@/actions/auth";
-import { initials } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { initials } from "@modaflow/ui/lib/format";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export function PageHeader({ title, description, action }: { title: string; description?: ReactNode; action?: ReactNode }) {
   return (

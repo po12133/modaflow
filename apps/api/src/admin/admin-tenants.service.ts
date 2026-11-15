@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { AuditService } from '../audit/audit.service.js';
-import { SubscriptionLifecycleService } from '../billing/subscription-lifecycle.service.js';
+import { AuditService } from './audit/audit.service.js';
+import { SubscriptionLifecycleService } from './billing/subscription-lifecycle.service.js';
 import { AppError } from '../common/app-error.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -83,7 +83,7 @@ export class AdminTenantsService {
         stores: { orderBy: { createdAt: 'asc' }, select: { id: true, name: true, slug: true, city: true, whatsapp: true, createdAt: true } },
         memberships: { orderBy: { createdAt: 'asc' }, select: { role: true, createdAt: true, user: { select: { id: true, name: true, email: true, status: true, lastLoginAt: true } } } },
         subscription: { include: { plan: { select: { code: true, name: true, isTrial: true } }, planVersion: { select: { version: true, priceCents: true } } } },
-        subscriptionHistory: { orderBy: { createdAt: 'desc' }, take: 30, include: { actor: { select: { name: true } } } },
+        subscriptionHistory: { orderBy: { createdAt: 'desc' }, take: 30, include: { actor: { select: { name: true } }, actorStaff: { select: { name: true } } } },
         subscriptionPeriods: { orderBy: { periodStart: 'desc' }, take: 30, include: { plan: { select: { name: true } } } },
         planChangeRequests: { where: { amountExpected: { not: null } }, orderBy: { createdAt: 'desc' }, take: 30, select: { id: true, status: true, amountExpected: true, method: true, createdAt: true, submittedAt: true, reviewedAt: true, toPlan: { select: { name: true } } } },
       },

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { CalendarClock, ChevronRight } from "lucide-react";
 import { UsageMeter } from "@/components/dashboard/usage-meter";
-import { formatDate, STATUS_LABELS } from "@/lib/format";
+import { formatDate, STATUS_LABELS } from "@modaflow/ui/lib/format";
 import type { Entitlements } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export function SubscriptionSummary({ subscription }: { subscription: Entitlements }) {
   return (

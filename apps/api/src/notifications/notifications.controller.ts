@@ -1,7 +1,7 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { TenantContext } from '../common/request-context.js';
-import { PageQueryDto } from '../admin/dto.js';
+import { PageQueryDto } from '../common/page-query.dto.js';
 import { CurrentTenant, TenantScoped } from '../tenancy/decorators.js';
 import { NotificationsService } from './notifications.service.js';
 

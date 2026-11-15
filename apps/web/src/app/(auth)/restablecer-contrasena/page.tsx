@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AuthHeader } from "@/components/auth/auth-card";
+import { AuthHeader } from "@modaflow/ui/components/auth-card";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
 export const metadata: Metadata = { title: "Nueva contraseña", robots: { index: false } };

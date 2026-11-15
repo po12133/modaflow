@@ -1,6 +1,6 @@
 import "server-only";
 import { api } from "@/lib/api";
-import { toQuery } from "@/lib/reports";
+import { toQuery } from "@modaflow/ui/lib/query";
 import type { SalesSummary } from "@/lib/types";
 import type {
   CategoryRow,

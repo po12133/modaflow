@@ -3,10 +3,10 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { RequestList } from "@/components/catalog-admin/request-list";
 import { PageHeader } from "@/components/dashboard/common";
-import { Pagination } from "@/components/pagination";
+import { Pagination } from "@modaflow/ui/components/pagination";
 import { REQUEST_STATUS_LABELS } from "@/config/catalog";
-import { searchParam as one } from "@/lib/search-params";
-import { cn } from "@/lib/utils";
+import { searchParam as one } from "@modaflow/ui/lib/search-params";
+import { cn } from "@modaflow/ui/lib/utils";
 import { getOrderRequests } from "@/services/catalog";
 
 export const metadata: Metadata = { title: "Solicitudes del catálogo" };

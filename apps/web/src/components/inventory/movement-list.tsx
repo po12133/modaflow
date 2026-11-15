@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { formatDate, variantLabel } from "@/lib/format";
+import { formatDate, variantLabel } from "@modaflow/ui/lib/format";
 import type { Movement, MovementType } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export const MOVEMENT_LABELS: Record<MovementType, string> = {
   INITIAL: "Entrada inicial",

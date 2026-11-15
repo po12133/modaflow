@@ -1,5 +1,5 @@
-import { formatNumber } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { formatNumber } from "@modaflow/ui/lib/format";
+import { cn } from "@modaflow/ui/lib/utils";
 
 /** Usage bar (as in the prototype sidebar): gradient, amber from 80 %, red when full. */
 export function UsageMeter({

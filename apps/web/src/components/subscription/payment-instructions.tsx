@@ -1,5 +1,5 @@
-import { formatMoney } from "@/lib/format";
-import type { PaymentInfo, PaymentRequest } from "@/types/billing";
+import { formatMoney } from "@modaflow/ui/lib/format";
+import type { PaymentInfo, PaymentRequest } from "@modaflow/ui/types/billing";
 
 export function PaymentInstructions({ info, request }: { info: PaymentInfo; request: PaymentRequest }) {
   const rows: [string, string | null][] = [

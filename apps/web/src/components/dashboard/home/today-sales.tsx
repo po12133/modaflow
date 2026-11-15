@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { SaleStatusBadge } from "@/components/sales/sale-status-badge";
-import { formatDate, formatMoney, PAYMENT_LABELS, plural } from "@/lib/format";
+import { formatDate, formatMoney, PAYMENT_LABELS, plural } from "@modaflow/ui/lib/format";
 import type { SalesSummary } from "@/lib/types";
 
 const timeFmt = new Intl.DateTimeFormat("es-BO", { hour: "2-digit", minute: "2-digit", timeZone: "America/La_Paz" });

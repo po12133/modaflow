@@ -1,4 +1,4 @@
-import { Pagination } from "@/components/pagination";
+import { Pagination } from "@modaflow/ui/components/pagination";
 import type { PublicProductPage } from "@/types/catalog";
 import { ProductCard } from "./product-card";
 

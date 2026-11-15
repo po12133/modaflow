@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { catalogQuery } from "@/lib/catalog";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 import type { PublicCategory } from "@/types/catalog";
 
 export function CategoryChips({ base, categories, active }: { base: string; categories: PublicCategory[]; active?: string }) {

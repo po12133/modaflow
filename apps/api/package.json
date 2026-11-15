@@ -12,6 +12,8 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
+    "start:admin": "nest start --watch --entryFile admin-main",
+    "start:admin:prod": "node dist/admin-main.js",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -23,7 +25,8 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
-    "admin:grant": "tsx src/cli/grant-superadmin.ts"
+    "staff": "tsx src/cli/staff.ts",
+    "db:roles": "tsx src/cli/provision-db-roles.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

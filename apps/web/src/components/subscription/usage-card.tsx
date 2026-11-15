@@ -1,5 +1,5 @@
 import { UsageMeter } from "@/components/dashboard/usage-meter";
-import { formatShortDate } from "@/lib/format";
+import { formatShortDate } from "@modaflow/ui/lib/format";
 import type { Entitlements } from "@/lib/types";
 
 export function UsageCard({ sub }: { sub: Entitlements }) {

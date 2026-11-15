@@ -6,11 +6,11 @@ import { MovementDialog } from "@/components/inventory/movement-dialog";
 import { MovementList } from "@/components/inventory/movement-list";
 import { ArchiveButton } from "@/components/products/archive-button";
 import { StockBadge } from "@/components/products/stock-badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import { api } from "@/lib/api";
 import { CatalogPublishRow } from "@/components/catalog-admin/catalog-publish-row";
 import { getDashboardContext, getProduct } from "@/lib/dal";
-import { formatDate, formatMoney, variantLabel } from "@/lib/format";
+import { formatDate, formatMoney, variantLabel } from "@modaflow/ui/lib/format";
 import type { Movement, Paginated } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Producto" };

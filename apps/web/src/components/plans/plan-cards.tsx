@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Check, Crown } from "lucide-react";
-import { formatNumber, formatPrice } from "@/lib/format";
+import { formatNumber, formatPrice } from "@modaflow/ui/lib/format";
 import type { Plan } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export function PlanCards({
   plans,

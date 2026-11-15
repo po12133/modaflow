@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { markNotificationReadAction } from "@/actions/subscription";
-import { NotificationList } from "@/components/common/notification-list";
+import { NotificationList } from "@modaflow/ui/components/notification-list";
 import { PageHeader } from "@/components/dashboard/common";
-import { Pagination } from "@/components/pagination";
-import { searchParam as one } from "@/lib/search-params";
+import { Pagination } from "@modaflow/ui/components/pagination";
+import { searchParam as one } from "@modaflow/ui/lib/search-params";
 import { getNotifications } from "@/services/billing";
 
 export const metadata: Metadata = { title: "Notificaciones" };

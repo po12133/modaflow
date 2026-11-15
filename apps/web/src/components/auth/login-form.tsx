@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction } from "@/actions/auth";
-import { FormMessage, SubmitButton, TextField } from "@/components/form";
+import { FormMessage, SubmitButton, TextField } from "@modaflow/ui/components/form";
 import type { FormState } from "@/lib/types";
 
 export function LoginForm() {

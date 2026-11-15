@@ -6,7 +6,7 @@ import { useState } from "react";
 import { WhatsAppIcon } from "@/components/common/whatsapp-icon";
 import { CART_MAX_QUANTITY } from "@/config/catalog";
 import { productInquiry, variantText, whatsappLink } from "@/lib/catalog";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 import type { PublicProductDetail } from "@/types/catalog";
 import { useCart } from "../cart/cart-provider";
 

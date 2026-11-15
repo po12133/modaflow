@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ImageOff } from "lucide-react";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@modaflow/ui/lib/format";
 import type { PublicProductCard } from "@/types/catalog";
 
 export function ProductCard({ product, base, priority = false }: { product: PublicProductCard; base: string; priority?: boolean }) {

@@ -3,8 +3,8 @@
 import { Check, LoaderCircle, Pencil, Plus, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { createCategoryAction, renameCategoryAction } from "@/actions/products";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@modaflow/ui/components/ui/button";
+import { Input } from "@modaflow/ui/components/ui/input";
 import type { Category } from "@/lib/types";
 
 export function CategoryManager({ categories, canEdit, canCreate }: { categories: Category[]; canEdit: boolean; canCreate: boolean }) {

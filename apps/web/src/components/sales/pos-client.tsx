@@ -3,12 +3,12 @@
 import { ImageOff, LoaderCircle, Minus, PackageX, Plus, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { searchPosProductsAction } from "@/actions/sales";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { formatMoney, variantLabel } from "@/lib/format";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@modaflow/ui/components/ui/dialog";
+import { Input } from "@modaflow/ui/components/ui/input";
+import { formatMoney, variantLabel } from "@modaflow/ui/lib/format";
 import { computeSale, fromCents, SaleRuleError, type SaleTotals, toCents } from "@/lib/sale-math";
 import type { Category, Discount, PosProduct, Variant } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 import { CheckoutDialog } from "./checkout-dialog";
 
 export interface CartLine {

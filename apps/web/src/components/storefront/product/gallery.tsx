@@ -2,8 +2,8 @@
 
 import { ImageOff, ZoomIn } from "lucide-react";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogTitle } from "@modaflow/ui/components/ui/dialog";
+import { cn } from "@modaflow/ui/lib/utils";
 import type { PublicProductDetail } from "@/types/catalog";
 
 export function Gallery({ images, name }: { images: PublicProductDetail["images"]; name: string }) {

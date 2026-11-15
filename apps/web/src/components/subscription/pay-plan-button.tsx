@@ -4,8 +4,8 @@ import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createPaymentRequestAction } from "@/actions/subscription";
-import { METHOD_LABELS } from "@/config/billing";
-import type { PlatformMethod } from "@/types/billing";
+import { METHOD_LABELS } from "@modaflow/ui/config/billing";
+import type { PlatformMethod } from "@modaflow/ui/types/billing";
 
 export function PayPlanButton({ planCode, label, methods }: { planCode: string; label: string; methods: PlatformMethod[] }) {
   const router = useRouter();

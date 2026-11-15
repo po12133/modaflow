@@ -3,7 +3,7 @@
 import { Ban, LoaderCircle, TriangleAlert } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { cancelSaleAction } from "@/actions/sales";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -13,10 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from "@modaflow/ui/components/ui/dialog";
+import { Input } from "@modaflow/ui/components/ui/input";
+import { Label } from "@modaflow/ui/components/ui/label";
+import { Textarea } from "@modaflow/ui/components/ui/textarea";
 
 /** Owner-only cancellation with a reason. Restores stock; money refunds are handled separately. */
 export function CancelSaleDialog({ saleId, number, units }: { saleId: string; number: string; units: number }) {

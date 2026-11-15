@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import { apiFailure, zodFailure } from "@/lib/action-errors";
+import { apiFailure, zodFailure } from "@modaflow/ui/lib/action-errors";
 import { api, ApiError } from "@/lib/api";
 import type { FormState } from "@/lib/types";
 import { changePasswordSchema, formValues, profileSchema } from "@/lib/validation";

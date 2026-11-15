@@ -1,4 +1,3 @@
-import { arpuCents, conversionPct, mrrCents } from '../admin/admin-metrics.js';
 import { addMonthsUtc, assertTransition, BillingRuleError, extendedTrialEnd, monthlyRecurringCents, periodEnd, plannedPeriod, reactivatedStatus } from './billing-rules.js';
 
 const iso = (d: Date) => d.toISOString();
@@ -55,14 +54,8 @@ describe('billing rules', () => {
     expect(iso(extendedTrialEnd(new Date('2026-11-20T00:00:00Z'), 7, now))).toBe('2026-11-27T00:00:00.000Z');
   });
 
-  it('computes MRR, ARPU and conversion without counting trials', () => {
+  it('counts only paid monthly plans as recurring revenue', () => {
     expect(monthlyRecurringCents({ ...monthly, priceCents: 6900 })).toBe(6900);
     expect(monthlyRecurringCents({ billingPeriod: 'TRIAL', durationDays: 14, priceCents: 0 })).toBe(0);
-    const mrr = mrrCents([{ ...monthly, priceCents: 6900 }, { ...monthly, priceCents: 3000 }, { ...monthly, priceCents: 11900 }]);
-    expect(mrr).toBe(21800);
-    expect(arpuCents(mrr, 3)).toBe(7267);
-    expect(arpuCents(0, 0)).toBeNull();
-    expect(conversionPct(1, 3)).toBe(33.3);
-    expect(conversionPct(0, 0)).toBeNull();
   });
 });

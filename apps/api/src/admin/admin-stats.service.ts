@@ -39,7 +39,7 @@ export class AdminStatsService {
 
   private async conversion() {
     const [users, trials, converted] = await Promise.all([
-      this.prisma.user.count({ where: { globalRole: null } }),
+      this.prisma.user.count(),
       this.prisma.trialGrant.count(),
       this.prisma.$queryRaw<{ n: number }[]>`SELECT count(DISTINCT g.tenant_id)::int AS n FROM trial_grants g
         WHERE EXISTS (SELECT 1 FROM plan_change_requests r WHERE r.tenant_id = g.tenant_id AND r.status = 'APPROVED')`,

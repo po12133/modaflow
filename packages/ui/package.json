@@ -1,0 +1,26 @@
+{
+  "name": "@modaflow/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Componentes, formatos y tipos compartidos por la web de suscriptores y la web de administración",
+  "type": "module",
+  "exports": {
+    "./components/*": "./src/components/*.tsx",
+    "./hooks/*": "./src/hooks/*.ts",
+    "./lib/*": "./src/lib/*.ts",
+    "./config/*": "./src/config/*.ts",
+    "./types/*": "./src/types/*.ts"
+  },
+  "peerDependencies": {
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.5.2",
+    "lucide-react": "^1.73.0",
+    "next": "16.4.6",
+    "radix-ui": "^1.8.1",
+    "react": "19.3.0",
+    "recharts": "^3.10.1"
+  },
+  "scripts": {
+    "lint": "eslint src"
+  }
+}

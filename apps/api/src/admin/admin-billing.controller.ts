@@ -2,19 +2,18 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patc
 import { Throttle } from '@nestjs/throttler';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { CurrentAuth } from '../auth/decorators.js';
-import { ApprovePaymentDto, ListPaymentsQueryDto, RejectPaymentDto } from '../billing/dto/payments.dto.js';
-import { UpdatePlatformSettingsDto } from '../billing/dto/settings.dto.js';
-import { imageUpload } from '../billing/payment-requests.controller.js';
-import { PaymentReviewService } from '../billing/payment-review.service.js';
-import { PlatformSettingsService } from '../billing/platform-settings.service.js';
+import { CurrentStaff, type StaffContext } from './auth/staff-context.js';
+import { ApprovePaymentDto, ListPaymentsQueryDto, RejectPaymentDto } from './billing/dto/payment-review.dto.js';
+import { UpdatePlatformSettingsDto } from './billing/dto/settings.dto.js';
+import { imageUpload } from '../images/image-upload.js';
+import { PaymentReviewService } from './billing/payment-review.service.js';
+import { PlatformSettingsService } from './billing/platform-settings.service.js';
 import { AppError } from '../common/app-error.js';
 import { clientIp } from '../common/client-ip.js';
-import type { AuthContext } from '../common/request-context.js';
 import { AdminPlansService } from './admin-plans.service.js';
 import { AdminSubscriptionsService } from './admin-subscriptions.service.js';
 import { ChangePlanDto, ExtendTrialDto, ManualPaymentDto, ReasonDto, SubscriptionsQueryDto, UpdatePlanDto } from './dto.js';
-import { AdminArea, SuperadminOnly } from './global-roles.guard.js';
+import { AdminArea, SuperadminOnly } from './staff-roles.guard.js';
 
 @ApiTags('admin')
 @AdminArea()
@@ -42,8 +41,8 @@ export class AdminBillingController {
   @Patch('plans/:id')
   @SuperadminOnly()
   @ApiOperation({ summary: 'Editar plan; si cambian condiciones comerciales se crea una nueva versión (no afecta periodos ya contratados)' })
-  updatePlan(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdatePlanDto, @CurrentAuth() a: AuthContext, @Req() req: Request) {
-    return this.plans.update(id, dto, a.userId, clientIp(req));
+  updatePlan(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdatePlanDto, @CurrentStaff() a: StaffContext, @Req() req: Request) {
+    return this.plans.update(id, dto, a.staffId, clientIp(req));
   }
 
   @Get('subscriptions')
@@ -59,33 +58,33 @@ export class AdminBillingController {
   @Post('subscriptions/:id/renew')
   @SuperadminOnly()
   @ApiOperation({ summary: 'Registrar un pago manual del plan actual y renovar desde el vencimiento vigente' })
-  renew(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ManualPaymentDto, @CurrentAuth() a: AuthContext, @Req() req: Request) {
-    return this.subscriptions.manualPayment(id, dto, a.userId, clientIp(req));
+  renew(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ManualPaymentDto, @CurrentStaff() a: StaffContext, @Req() req: Request) {
+    return this.subscriptions.manualPayment(id, dto, a.staffId, clientIp(req));
   }
 
   @Post('subscriptions/:id/change-plan')
   @SuperadminOnly()
   @ApiOperation({ summary: 'Activar o cambiar de plan registrando el pago manual correspondiente' })
-  changePlan(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ChangePlanDto, @CurrentAuth() a: AuthContext, @Req() req: Request) {
-    return this.subscriptions.manualPayment(id, dto, a.userId, clientIp(req));
+  changePlan(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ChangePlanDto, @CurrentStaff() a: StaffContext, @Req() req: Request) {
+    return this.subscriptions.manualPayment(id, dto, a.staffId, clientIp(req));
   }
 
   @Post('subscriptions/:id/extend-trial')
   @SuperadminOnly()
   @HttpCode(HttpStatus.OK)
-  extendTrial(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ExtendTrialDto, @CurrentAuth() a: AuthContext, @Req() req: Request) {
-    return this.subscriptions.transition(id, 'EXTEND_TRIAL', a.userId, dto.reason, clientIp(req), dto.days);
+  extendTrial(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ExtendTrialDto, @CurrentStaff() a: StaffContext, @Req() req: Request) {
+    return this.subscriptions.transition(id, 'EXTEND_TRIAL', a.staffId, dto.reason, clientIp(req), dto.days);
   }
 
   @Post('subscriptions/:id/:action')
   @SuperadminOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'suspend | reactivate | cancel (con motivo)' })
-  transition(@Param('id', new ParseUUIDPipe()) id: string, @Param('action') action: string, @Body() dto: ReasonDto, @CurrentAuth() a: AuthContext, @Req() req: Request) {
+  transition(@Param('id', new ParseUUIDPipe()) id: string, @Param('action') action: string, @Body() dto: ReasonDto, @CurrentStaff() a: StaffContext, @Req() req: Request) {
     const map = { suspend: 'SUSPEND', reactivate: 'REACTIVATE', cancel: 'CANCEL' } as const;
     const key = map[action as keyof typeof map];
     if (!key) throw new AppError(HttpStatus.NOT_FOUND, 'INVALID_TRANSITION', 'Acción no válida.');
-    return this.subscriptions.transition(id, key, a.userId, dto.reason, clientIp(req));
+    return this.subscriptions.transition(id, key, a.staffId, dto.reason, clientIp(req));
   }
 
   @Get('payments')
@@ -103,16 +102,16 @@ export class AdminBillingController {
   @SuperadminOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Aprobar (transaccional e idempotente: una solicitud solo puede aprobarse una vez)' })
-  approve(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ApprovePaymentDto, @CurrentAuth() a: AuthContext, @Req() req: Request) {
+  approve(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ApprovePaymentDto, @CurrentStaff() a: StaffContext, @Req() req: Request) {
     if (!dto.amountVerified) throw new AppError(HttpStatus.BAD_REQUEST, 'VALIDATION_ERROR', 'Confirma que verificaste el importe recibido.', { errors: { amountVerified: ['Confirma que verificaste el importe recibido.'] } });
-    return this.payments.approve(id, a.userId, dto.note ?? null, clientIp(req));
+    return this.payments.approve(id, a.staffId, dto.note ?? null, clientIp(req));
   }
 
   @Post('payments/:id/reject')
   @SuperadminOnly()
   @HttpCode(HttpStatus.OK)
-  reject(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: RejectPaymentDto, @CurrentAuth() a: AuthContext, @Req() req: Request) {
-    return this.payments.reject(id, a.userId, dto.reason, clientIp(req));
+  reject(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: RejectPaymentDto, @CurrentStaff() a: StaffContext, @Req() req: Request) {
+    return this.payments.reject(id, a.staffId, dto.reason, clientIp(req));
   }
 
   @Get('settings')
@@ -123,16 +122,16 @@ export class AdminBillingController {
   @Patch('settings')
   @SuperadminOnly()
   @ApiOperation({ summary: 'Configuración general, suscripciones, pagos y notificaciones (sin secretos de infraestructura)' })
-  updateSettings(@Body() dto: UpdatePlatformSettingsDto, @CurrentAuth() a: AuthContext, @Req() req: Request) {
-    return this.settings.update(dto, a.userId, clientIp(req));
+  updateSettings(@Body() dto: UpdatePlatformSettingsDto, @CurrentStaff() a: StaffContext, @Req() req: Request) {
+    return this.settings.update(dto, a.staffId, clientIp(req));
   }
 
   @Post('settings/payment-qr')
   @SuperadminOnly()
   @UseInterceptors(imageUpload)
   @ApiConsumes('multipart/form-data')
-  uploadQr(@UploadedFile() file: Express.Multer.File | undefined, @CurrentAuth() a: AuthContext, @Req() req: Request) {
+  uploadQr(@UploadedFile() file: Express.Multer.File | undefined, @CurrentStaff() a: StaffContext, @Req() req: Request) {
     if (!file) throw new AppError(HttpStatus.BAD_REQUEST, 'INVALID_IMAGE', 'Selecciona la imagen del QR bancario.');
-    return this.settings.uploadQr(file.buffer, a.userId, clientIp(req));
+    return this.settings.uploadQr(file.buffer, a.staffId, clientIp(req));
   }
 }

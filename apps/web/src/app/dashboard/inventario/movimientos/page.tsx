@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/common";
 import { MOVEMENT_LABELS, MovementList } from "@/components/inventory/movement-list";
-import { Pagination } from "@/components/pagination";
+import { Pagination } from "@modaflow/ui/components/pagination";
 import { InventoryTabs } from "@/components/products/inventory-tabs";
 import { api } from "@/lib/api";
 import type { Movement, MovementType, Paginated } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export const metadata: Metadata = { title: "Movimientos" };
 

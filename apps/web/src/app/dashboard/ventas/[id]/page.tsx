@@ -5,10 +5,10 @@ import { ChevronLeft, FileText } from "lucide-react";
 import { CancelSaleDialog } from "@/components/sales/cancel-sale-dialog";
 import { SaleStatusBadge } from "@/components/sales/sale-status-badge";
 import { MOVEMENT_LABELS } from "@/components/inventory/movement-list";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { getDashboardContext } from "@/lib/dal";
-import { formatDateTime, formatMoney, PAYMENT_LABELS, variantLabel } from "@/lib/format";
+import { formatDateTime, formatMoney, PAYMENT_LABELS, variantLabel } from "@modaflow/ui/lib/format";
 import type { SaleDetail } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Detalle de venta" };

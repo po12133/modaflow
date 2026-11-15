@@ -1,12 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { AuditService } from '../audit/audit.service.js';
+import { AuditService } from './audit/audit.service.js';
 import { AppError } from '../common/app-error.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { isUuid } from './admin-status-filter.js';
 import type { UserStatusDto, UsersQueryDto } from './dto.js';
 
-const USER_PUBLIC = { id: true, name: true, email: true, status: true, globalRole: true, createdAt: true, lastLoginAt: true, suspendedAt: true, suspendedReason: true } as const;
+const USER_PUBLIC = { id: true, name: true, email: true, status: true, createdAt: true, lastLoginAt: true, suspendedAt: true, suspendedReason: true } as const;
 
 @Injectable()
 export class AdminUsersService {
@@ -49,20 +49,13 @@ export class AdminUsersService {
   }
 
   async setStatus(id: string, dto: UserStatusDto, actorId: string, ip: string | null) {
-    if (id === actorId && dto.status === 'SUSPENDED') {
-      throw new AppError(HttpStatus.CONFLICT, 'LAST_SUPERADMIN', 'No puedes suspender tu propio acceso.');
-    }
     await this.prisma.$transaction(async (tx) => {
-      const before = await tx.user.findUnique({ where: { id }, select: { status: true, globalRole: true } });
+      const before = await tx.user.findUnique({ where: { id }, select: { status: true } });
       if (!before) throw new AppError(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'No se encontró el usuario.');
-      if (dto.status === 'SUSPENDED' && before.globalRole === 'SUPERADMIN') {
-        await tx.$queryRaw`SELECT id FROM users WHERE global_role = 'SUPERADMIN' FOR UPDATE`;
-        const others = await tx.user.count({ where: { globalRole: 'SUPERADMIN', status: 'ACTIVE', id: { not: id } } });
-        if (others === 0) throw new AppError(HttpStatus.CONFLICT, 'LAST_SUPERADMIN', 'No se puede suspender al último superadministrador activo.');
-      }
       await tx.user.update({
         where: { id },
         data: dto.status === 'SUSPENDED' ? { status: 'SUSPENDED', suspendedAt: new Date(), suspendedReason: dto.reason } : { status: 'ACTIVE', suspendedAt: null, suspendedReason: null },
+        select: { id: true },
       });
       if (dto.status === 'SUSPENDED') await tx.session.deleteMany({ where: { userId: id } });
       await this.audit.record({ actorId, action: dto.status === 'SUSPENDED' ? 'USER_SUSPENDED' : 'USER_REACTIVATED', entityType: 'User', entityId: id, before: { status: before.status }, after: { status: dto.status }, reason: dto.reason, ip }, tx);

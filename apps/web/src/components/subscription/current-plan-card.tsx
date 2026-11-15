@@ -1,7 +1,7 @@
 import { Check, Minus } from "lucide-react";
-import { formatDate, STATUS_LABELS } from "@/lib/format";
+import { formatDate, STATUS_LABELS } from "@modaflow/ui/lib/format";
 import type { Entitlements } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 const FEATURE_LABELS = {
   inventoryAndSales: "Inventario y ventas",

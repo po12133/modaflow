@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { changePasswordAction, updateProfileAction } from "@/actions/account";
-import { FormMessage, SubmitButton, TextField } from "@/components/form";
+import { FormMessage, SubmitButton, TextField } from "@modaflow/ui/components/form";
 import type { FormState } from "@/lib/types";
 import { PASSWORD_HINT } from "@/lib/validation";
 

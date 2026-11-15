@@ -4,10 +4,10 @@ import { notFound } from "next/navigation";
 import { CircleCheck, Plus } from "lucide-react";
 import { ReceiptActions } from "@/components/sales/receipt-actions";
 import { ReceiptView } from "@/components/sales/receipt-view";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { getDashboardContext } from "@/lib/dal";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@modaflow/ui/lib/format";
 import type { Receipt, SaleDetail } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Boleta" };

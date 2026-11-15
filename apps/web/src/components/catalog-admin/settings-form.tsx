@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { updateCatalogSettingsAction } from "@/actions/catalog";
-import { Field, FormMessage, SubmitButton, TextAreaField, TextField } from "@/components/form";
+import { Field, FormMessage, SubmitButton, TextAreaField, TextField } from "@modaflow/ui/components/form";
 import type { FormState } from "@/lib/types";
 import type { CatalogSettings } from "@/types/catalog";
 import { SlugField } from "./slug-field";

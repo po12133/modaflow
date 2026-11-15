@@ -1,16 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AuditModule } from '../audit/audit.module.js';
-import { NotificationsModule } from '../notifications/notifications.module.js';
+import { NotificationsCoreModule } from '../notifications/notifications-core.module.js';
+import { PaymentInfoService } from './payment-info.service.js';
 import { PaymentRequestsController } from './payment-requests.controller.js';
 import { PaymentRequestsService } from './payment-requests.service.js';
-import { PaymentReviewService } from './payment-review.service.js';
-import { PlatformSettingsService } from './platform-settings.service.js';
-import { SubscriptionLifecycleService } from './subscription-lifecycle.service.js';
 
 @Module({
-  imports: [AuditModule, NotificationsModule],
+  imports: [NotificationsCoreModule],
   controllers: [PaymentRequestsController],
-  providers: [PlatformSettingsService, SubscriptionLifecycleService, PaymentRequestsService, PaymentReviewService],
-  exports: [PlatformSettingsService, SubscriptionLifecycleService, PaymentReviewService],
+  providers: [PaymentInfoService, PaymentRequestsService],
 })
 export class BillingModule {}

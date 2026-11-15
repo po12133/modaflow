@@ -1,4 +1,4 @@
-import { PAYMENT_LABELS } from "@/lib/format";
+import { PAYMENT_LABELS } from "@modaflow/ui/lib/format";
 import type { SalesReport } from "@/types/reports";
 import { UrlSearch, UrlSelect } from "../controls/url-fields";
 

@@ -3,9 +3,9 @@
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@modaflow/ui/components/ui/input";
 import type { Category } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export interface FilterValues {
   search?: string;

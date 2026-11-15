@@ -3,16 +3,16 @@ import Link from "next/link";
 import { CircleX, Package, Plus, TriangleAlert } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/common";
 import { MovementDialog } from "@/components/inventory/movement-dialog";
-import { Pagination } from "@/components/pagination";
+import { Pagination } from "@modaflow/ui/components/pagination";
 import { InventoryTabs } from "@/components/products/inventory-tabs";
 import { type FilterValues, ProductFilters } from "@/components/products/product-filters";
 import { StockBadge } from "@/components/products/stock-badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import { api } from "@/lib/api";
 import { getCategories, getDashboardContext } from "@/lib/dal";
-import { formatNumber, variantLabel } from "@/lib/format";
+import { formatNumber, variantLabel } from "@modaflow/ui/lib/format";
 import type { InventoryResponse } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export const metadata: Metadata = { title: "Stock" };
 

@@ -4,7 +4,7 @@ import { CategoryChips } from "@/components/storefront/products/category-chips";
 import { ProductGrid } from "@/components/storefront/products/product-grid";
 import { StoreHero } from "@/components/storefront/products/store-hero";
 import { CATALOG_PAGE_SIZE } from "@/config/catalog";
-import { searchParam as one } from "@/lib/search-params";
+import { searchParam as one } from "@modaflow/ui/lib/search-params";
 import { getPublicCategories, getPublicProducts, getPublicStore } from "@/services/storefront";
 
 export const instant = false;

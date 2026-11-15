@@ -1,8 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { AuditService } from '../audit/audit.service.js';
+import { AuditService } from './audit/audit.service.js';
 import type { AdminAction } from '../billing/billing-rules.js';
 import { latestVersion } from '../billing/plan-versions.js';
-import { SubscriptionLifecycleService } from '../billing/subscription-lifecycle.service.js';
+import { SubscriptionLifecycleService } from './billing/subscription-lifecycle.service.js';
 import { AppError } from '../common/app-error.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -65,7 +65,7 @@ export class AdminSubscriptionsService {
         plan: { select: { code: true, name: true, isTrial: true } },
         planVersion: true,
         periods: { orderBy: { periodStart: 'desc' }, take: 50 },
-        history: { orderBy: { createdAt: 'desc' }, take: 50, include: { actor: { select: { name: true } } } },
+        history: { orderBy: { createdAt: 'desc' }, take: 50, include: { actor: { select: { name: true } }, actorStaff: { select: { name: true } } } },
       },
     });
     if (!s) throw new AppError(HttpStatus.NOT_FOUND, 'SUBSCRIPTION_NOT_FOUND', 'No se encontró la suscripción.');
@@ -93,11 +93,13 @@ export class AdminSubscriptionsService {
       const plan = 'planCode' in dto ? await tx.plan.findUnique({ where: { code: dto.planCode } }) : current.plan;
       if (!plan || plan.isTrial || !plan.isActive || plan.priceCents <= 0) throw new AppError(HttpStatus.BAD_REQUEST, 'PLAN_NOT_PAYABLE', 'Ese plan no se puede contratar.');
       const version = await latestVersion(tx, plan.id);
+      const owner = await tx.tenantMembership.findFirst({ where: { tenantId, role: 'OWNER' }, orderBy: { createdAt: 'asc' }, select: { userId: true } });
+      if (!owner) throw new AppError(HttpStatus.CONFLICT, 'TENANT_WITHOUT_OWNER', 'El negocio no tiene propietario.');
       const now = new Date();
       const request = await tx.planChangeRequest.create({
         data: {
           tenantId,
-          requestedById: actorId,
+          requestedById: owner.userId,
           fromPlanId: current.planId,
           toPlanId: plan.id,
           planVersionId: version.id,

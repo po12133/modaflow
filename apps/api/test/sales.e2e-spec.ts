@@ -2,13 +2,13 @@
 // against a real PostgreSQL *_test database.
 import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { PasswordService } from './../src/auth/password.service.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { ownerPrisma, testModule } from './support/db.js';
 
 const dbName = new URL(process.env['DATABASE_URL'] ?? 'postgresql://x/none').pathname.slice(1);
 if (!dbName.endsWith('_test')) throw new Error(`E2E tests must run on a *_test database (got "${dbName}").`);
@@ -60,15 +60,16 @@ describe('Sales and POS (e2e)', () => {
   const stockOf = async (variantId: string) => (await prisma.productVariant.findUniqueOrThrow({ where: { id: variantId } })).stock;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await testModule(AppModule, 'modaflow_app').compile();
     app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
-    prisma = app.get(PrismaService);
+    prisma = ownerPrisma();
     server = app.getHttpServer();
   });
 
   afterAll(async () => {
+    await prisma.$disconnect();
     await app.close();
   });
 

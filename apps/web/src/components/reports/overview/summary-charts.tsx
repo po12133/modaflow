@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { PAYMENT_LABELS, plural } from "@/lib/format";
+import { PAYMENT_LABELS, plural } from "@modaflow/ui/lib/format";
 import type { PaymentRow, ProductsReport, SalesChart } from "@/types/reports";
-import { RankChart } from "../charts/rank-chart";
+import { RankChart } from "@modaflow/ui/components/charts/rank-chart";
 import { TopProductsChart } from "../charts/top-products-chart";
 import { SalesTrendChart } from "../charts/trend-chart";
-import { Panel } from "@/components/common/panel";
+import { Panel } from "@modaflow/ui/components/panel";
 
 interface SummaryChartsProps {
   chart: SalesChart;

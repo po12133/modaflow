@@ -3,9 +3,9 @@
 import { Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Input } from "@/components/ui/input";
-import { PAYMENT_LABELS } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { Input } from "@modaflow/ui/components/ui/input";
+import { PAYMENT_LABELS } from "@modaflow/ui/lib/format";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export interface SalesFilterValues {
   period?: string;

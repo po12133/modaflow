@@ -1,4 +1,4 @@
-import { formatDateTime, formatMoney, PAYMENT_LABELS, variantLabel } from "@/lib/format";
+import { formatDateTime, formatMoney, PAYMENT_LABELS, variantLabel } from "@modaflow/ui/lib/format";
 import type { Receipt } from "@/lib/types";
 
 /** Digital receipt (internal sale voucher, not a tax invoice). Server component; print-friendly. */

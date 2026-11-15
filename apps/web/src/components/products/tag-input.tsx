@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@modaflow/ui/components/ui/input";
 
 const key = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().replace(/\s+/g, " ").toLowerCase();

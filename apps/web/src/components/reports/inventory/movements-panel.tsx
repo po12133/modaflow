@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { MOVEMENT_LABELS } from "@/components/inventory/movement-list";
 import { STOCK_INCREASES } from "@/config/reports";
-import { plural } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { plural } from "@modaflow/ui/lib/format";
+import { cn } from "@modaflow/ui/lib/utils";
 import type { InventoryReport } from "@/types/reports";
-import { Panel } from "@/components/common/panel";
+import { Panel } from "@modaflow/ui/components/panel";
 
 const LABELS: Partial<Record<string, string>> = { SALE: "Salidas por ventas", SALE_CANCEL: "Restituciones por anulación" };
 

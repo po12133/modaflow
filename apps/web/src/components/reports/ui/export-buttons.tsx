@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FileSpreadsheet, FileText, Lock } from "lucide-react";
 import { REQUIRED_PLAN } from "@/config/reports";
-import { toQuery } from "@/lib/reports";
+import { toQuery } from "@modaflow/ui/lib/query";
 
 export function ExportButtons({ query, advanced }: { query: Record<string, string | undefined>; advanced: boolean }) {
   if (!advanced) {

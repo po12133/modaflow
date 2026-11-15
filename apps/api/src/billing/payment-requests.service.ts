@@ -10,7 +10,7 @@ import { StorageService } from '../storage/storage.service.js';
 import { effectiveStatus } from '../subscriptions/entitlement-rules.js';
 import type { CreatePaymentRequestDto } from './dto/payments.dto.js';
 import { latestVersion } from './plan-versions.js';
-import { PlatformSettingsService } from './platform-settings.service.js';
+import { PaymentInfoService } from './payment-info.service.js';
 
 export const PAYMENT_SELECT = {
   id: true,
@@ -36,7 +36,7 @@ export class PaymentRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
-    private readonly settings: PlatformSettingsService,
+    private readonly settings: PaymentInfoService,
     private readonly notifications: NotificationsService,
   ) {}
 

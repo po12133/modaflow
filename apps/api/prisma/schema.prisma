@@ -12,6 +12,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["public", "admin"]
 }
 
 // ---------------------------------------------------------------------------
@@ -19,21 +20,20 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
-  id                  String      @id @default(uuid()) @db.Uuid
-  name                String      @db.VarChar(120)
+  id                  String     @id @default(uuid()) @db.Uuid
+  name                String     @db.VarChar(120)
   /// Always stored lowercased and trimmed.
-  email               String      @unique @db.VarChar(254)
-  passwordHash        String      @map("password_hash")
+  email               String     @unique @db.VarChar(254)
+  passwordHash        String     @map("password_hash")
   /// Consecutive failed logins; reset on success. Drives temporary lockout.
-  failedLoginAttempts Int         @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime?   @map("locked_until") @db.Timestamptz(3)
-  lastLoginAt         DateTime?   @map("last_login_at") @db.Timestamptz(3)
-  globalRole          GlobalRole? @map("global_role")
-  status              UserStatus  @default(ACTIVE)
-  suspendedAt         DateTime?   @map("suspended_at") @db.Timestamptz(3)
-  suspendedReason     String?     @map("suspended_reason") @db.VarChar(300)
-  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  failedLoginAttempts Int        @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?  @map("locked_until") @db.Timestamptz(3)
+  lastLoginAt         DateTime?  @map("last_login_at") @db.Timestamptz(3)
+  status              UserStatus @default(ACTIVE)
+  suspendedAt         DateTime?  @map("suspended_at") @db.Timestamptz(3)
+  suspendedReason     String?    @map("suspended_reason") @db.VarChar(300)
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   memberships         TenantMembership[]
   sessions            Session[]
@@ -45,14 +45,11 @@ model User {
   productImages       ProductImage[]
   aiAnalyses          AiAnalysis[]
   sales               Sale[]                @relation("SaleSeller")
-  reviewedPayments    PlanChangeRequest[]   @relation("PaymentReviewer")
-  auditLogs           AdminAuditLog[]
   subscriptionHistory SubscriptionHistory[]
-  subscriptionPeriods SubscriptionPeriod[]
-  planVersions        PlanVersion[]
   saleCancellations   SaleCancellation[]    @relation("SaleCanceler")
 
   @@map("users")
+  @@schema("public")
 }
 
 /// Server-side session. The cookie holds a random token; only its SHA-256
@@ -75,6 +72,7 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
   @@map("sessions")
+  @@schema("public")
 }
 
 model PasswordResetToken {
@@ -89,6 +87,7 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +98,8 @@ enum MembershipRole {
   OWNER
   ADMIN
   SELLER
+
+  @@schema("public")
 }
 
 /// A business (company) using ModaFlow. Owns stores, subscription and data.
@@ -135,6 +136,7 @@ model Tenant {
   notifications       Notification[]
 
   @@map("tenants")
+  @@schema("public")
 }
 
 model TenantMembership {
@@ -150,6 +152,7 @@ model TenantMembership {
   @@unique([tenantId, userId])
   @@index([userId])
   @@map("tenant_memberships")
+  @@schema("public")
 }
 
 model Store {
@@ -180,6 +183,7 @@ model Store {
 
   @@index([tenantId])
   @@map("stores")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +193,8 @@ model Store {
 enum BillingPeriod {
   TRIAL
   MONTHLY
+
+  @@schema("public")
 }
 
 enum UsagePeriod {
@@ -196,6 +202,8 @@ enum UsagePeriod {
   TOTAL
   /// Resets every calendar month.
   MONTHLY
+
+  @@schema("public")
 }
 
 enum CatalogAccess {
@@ -203,6 +211,8 @@ enum CatalogAccess {
   /// Available only while the trial is active.
   TEMPORARY
   FULL
+
+  @@schema("public")
 }
 
 model Plan {
@@ -246,6 +256,7 @@ model Plan {
   changeRequestsTo   PlanChangeRequest[]  @relation("ChangeToPlan")
 
   @@map("plans")
+  @@schema("public")
 }
 
 enum SubscriptionStatus {
@@ -254,6 +265,8 @@ enum SubscriptionStatus {
   EXPIRED
   CANCELED
   SUSPENDED
+
+  @@schema("public")
 }
 
 /// Current subscription of a tenant (one per tenant). The effective status is
@@ -282,10 +295,13 @@ model Subscription {
   @@index([planId])
   @@index([status, currentPeriodEnd])
   @@map("subscriptions")
+  @@schema("public")
 }
 
 enum UsageMetric {
   AI_ANALYSES
+
+  @@schema("public")
 }
 
 /// Metered consumption per tenant and period (products, users and branches are
@@ -304,6 +320,7 @@ model SubscriptionUsage {
 
   @@unique([tenantId, metric, periodStart])
   @@map("subscription_usages")
+  @@schema("public")
 }
 
 /// Records that a free trial was granted. Unique per user, tenant and business
@@ -319,6 +336,7 @@ model TrialGrant {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@map("trial_grants")
+  @@schema("public")
 }
 
 enum PlanChangeRequestStatus {
@@ -326,6 +344,8 @@ enum PlanChangeRequestStatus {
   APPROVED
   REJECTED
   CANCELED
+
+  @@schema("public")
 }
 
 /// Request from a tenant to switch plans. Approval (and payment) is handled
@@ -356,13 +376,14 @@ model PlanChangeRequest {
   fromPlan    Plan                @relation("ChangeFromPlan", fields: [fromPlanId], references: [id], onDelete: Restrict)
   toPlan      Plan                @relation("ChangeToPlan", fields: [toPlanId], references: [id], onDelete: Restrict)
   planVersion PlanVersion?        @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
-  reviewedBy  User?               @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  reviewedBy  Staff?              @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
   period      SubscriptionPeriod?
 
   @@index([tenantId, status])
   @@index([status, createdAt])
   @@index([reviewedAt])
   @@map("plan_change_requests")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------------------
@@ -385,6 +406,7 @@ model Category {
 
   @@unique([tenantId, normalizedName])
   @@map("categories")
+  @@schema("public")
 }
 
 model Tag {
@@ -400,6 +422,7 @@ model Tag {
   @@unique([tenantId, normalizedName])
   @@index([normalizedName(ops: raw("gin_trgm_ops"))], type: Gin, map: "tags_normalized_name_trgm")
   @@map("tags")
+  @@schema("public")
 }
 
 model ProductTag {
@@ -412,11 +435,14 @@ model ProductTag {
   @@id([productId, tagId])
   @@index([tagId])
   @@map("product_tags")
+  @@schema("public")
 }
 
 enum ProductStatus {
   ACTIVE
   ARCHIVED
+
+  @@schema("public")
 }
 
 /// A garment model. Stock lives in its variants (size/color); totalStock is
@@ -472,6 +498,7 @@ model Product {
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_name_trgm")
   @@index([sku(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_sku_trgm")
   @@map("products")
+  @@schema("public")
 }
 
 /// Sellable unit of a product (e.g. Roja / M) with its own stock.
@@ -499,6 +526,7 @@ model ProductVariant {
   @@index([tenantId, stock])
   @@index([sku(ops: raw("gin_trgm_ops"))], type: Gin, map: "product_variants_sku_trgm")
   @@map("product_variants")
+  @@schema("public")
 }
 
 /// Photo stored in S3-compatible storage; only the object key lives here.
@@ -525,6 +553,7 @@ model ProductImage {
   @@index([tenantId, productId])
   @@index([productId, position])
   @@map("product_images")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------------------
@@ -540,6 +569,8 @@ enum InventoryMovementType {
   /// Stage 3: units sold (decrease) and restored when a sale is canceled (increase).
   SALE
   SALE_CANCEL
+
+  @@schema("public")
 }
 
 /// Append-only stock ledger. stock_after = stock_before +/- quantity is enforced
@@ -575,6 +606,7 @@ model InventoryMovement {
   @@index([productId, createdAt])
   @@index([saleId])
   @@map("inventory_movements")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------------------
@@ -585,6 +617,8 @@ enum AiAnalysisStatus {
   PENDING
   SUCCEEDED
   FAILED
+
+  @@schema("public")
 }
 
 /// One garment analysis request. A credit is reserved when the analysis
@@ -617,6 +651,7 @@ model AiAnalysis {
   @@index([tenantId, createdAt])
   @@index([status, createdAt])
   @@map("ai_analyses")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------------------
@@ -628,16 +663,22 @@ enum PaymentMethod {
   QR
   TRANSFER
   OTHER
+
+  @@schema("public")
 }
 
 enum SaleStatus {
   COMPLETED
   CANCELED
+
+  @@schema("public")
 }
 
 enum DiscountType {
   PERCENT
   AMOUNT
+
+  @@schema("public")
 }
 
 /// A confirmed sale. Amounts are computed by the backend from current prices
@@ -687,6 +728,7 @@ model Sale {
   @@index([tenantId, status, createdAt])
   @@index([tenantId, paymentMethod, createdAt])
   @@map("sales")
+  @@schema("public")
 }
 
 /// Sold line with a snapshot of the commercial data at the time of sale, so
@@ -730,6 +772,7 @@ model SaleItem {
   @@index([variantId])
   @@index([tenantId, categoryId])
   @@map("sale_items")
+  @@schema("public")
 }
 
 /// Controlled cancellation of a sale (never a physical delete). Stock is
@@ -751,6 +794,7 @@ model SaleCancellation {
 
   @@index([tenantId, createdAt])
   @@map("sale_cancellations")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------------------
@@ -760,11 +804,15 @@ model SaleCancellation {
 enum CatalogStatus {
   PUBLISHED
   HIDDEN
+
+  @@schema("public")
 }
 
 enum OutOfStockMode {
   SHOW
   HIDE
+
+  @@schema("public")
 }
 
 enum CatalogRequestStatus {
@@ -772,6 +820,8 @@ enum CatalogRequestStatus {
   WHATSAPP_OPENED
   ATTENDED
   CANCELED
+
+  @@schema("public")
 }
 
 model CatalogSettings {
@@ -792,6 +842,7 @@ model CatalogSettings {
 
   @@index([tenantId])
   @@map("catalog_settings")
+  @@schema("public")
 }
 
 model CatalogOrderRequest {
@@ -820,6 +871,7 @@ model CatalogOrderRequest {
   @@index([tenantId, status, createdAt])
   @@index([saleId])
   @@map("catalog_order_requests")
+  @@schema("public")
 }
 
 model CatalogOrderRequestItem {
@@ -845,25 +897,25 @@ model CatalogOrderRequestItem {
   @@index([requestId])
   @@index([tenantId, productId])
   @@map("catalog_order_request_items")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------------------
 // Stage 6: SaaS administration, billing and notifications
 // ---------------------------------------------------------------------------
 
-enum GlobalRole {
-  SUPERADMIN
-  SUPPORT
-}
-
 enum UserStatus {
   ACTIVE
   SUSPENDED
+
+  @@schema("public")
 }
 
 enum PlatformPaymentMethod {
   QR
   TRANSFER
+
+  @@schema("public")
 }
 
 enum PeriodKind {
@@ -872,6 +924,8 @@ enum PeriodKind {
   RENEWAL
   PLAN_CHANGE
   EXTENSION
+
+  @@schema("public")
 }
 
 enum SubscriptionAction {
@@ -884,16 +938,22 @@ enum SubscriptionAction {
   REACTIVATED
   CANCELED
   EXPIRED
+
+  @@schema("public")
 }
 
 enum AuditResult {
   SUCCESS
   FAILURE
+
+  @@schema("public")
 }
 
 enum NotificationAudience {
   TENANT
   ADMIN
+
+  @@schema("public")
 }
 
 enum NotificationType {
@@ -905,6 +965,8 @@ enum NotificationType {
   SUBSCRIPTION_ACTIVATED
   SUBSCRIPTION_ENDING
   SUBSCRIPTION_EXPIRED
+
+  @@schema("public")
 }
 
 enum EmailStatus {
@@ -913,6 +975,8 @@ enum EmailStatus {
   SENT
   SKIPPED
   FAILED
+
+  @@schema("public")
 }
 
 model PlanVersion {
@@ -937,13 +1001,14 @@ model PlanVersion {
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
 
   plan          Plan                 @relation(fields: [planId], references: [id], onDelete: Restrict)
-  createdBy     User?                @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy     Staff?               @relation(fields: [createdById], references: [id], onDelete: Restrict)
   subscriptions Subscription[]
   requests      PlanChangeRequest[]
   periods       SubscriptionPeriod[]
 
   @@unique([planId, version])
   @@map("plan_versions")
+  @@schema("public")
 }
 
 model SubscriptionPeriod {
@@ -966,11 +1031,12 @@ model SubscriptionPeriod {
   plan           Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
   planVersion    PlanVersion?       @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
   paymentRequest PlanChangeRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: Restrict)
-  createdBy      User?              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy      Staff?             @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([tenantId, periodStart])
   @@index([subscriptionId])
   @@map("subscription_periods")
+  @@schema("public")
 }
 
 model SubscriptionHistory {
@@ -986,20 +1052,23 @@ model SubscriptionHistory {
   toPeriodEnd    DateTime?           @map("to_period_end") @db.Timestamptz(3)
   reason         String?             @db.VarChar(500)
   actorId        String?             @map("actor_id") @db.Uuid
+  actorStaffId   String?             @map("actor_staff_id") @db.Uuid
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   actor        User?        @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  actorStaff   Staff?       @relation(fields: [actorStaffId], references: [id], onDelete: Restrict)
 
   @@index([tenantId, createdAt])
   @@index([action, createdAt])
   @@map("subscription_history")
+  @@schema("public")
 }
 
 model AdminAuditLog {
   id         String      @id @default(uuid()) @db.Uuid
-  actorId    String      @map("actor_id") @db.Uuid
+  actorId    String?     @map("actor_id") @db.Uuid
   action     String      @db.VarChar(60)
   entityType String      @map("entity_type") @db.VarChar(40)
   entityId   String      @map("entity_id") @db.VarChar(60)
@@ -1010,12 +1079,13 @@ model AdminAuditLog {
   ip         String?     @db.VarChar(64)
   createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  actor Staff? @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([createdAt])
   @@index([entityType, entityId])
   @@index([actorId, createdAt])
-  @@map("admin_audit_logs")
+  @@map("audit_logs")
+  @@schema("admin")
 }
 
 model Notification {
@@ -1036,6 +1106,7 @@ model Notification {
   @@index([tenantId, createdAt])
   @@index([audience, createdAt])
   @@map("notifications")
+  @@schema("public")
 }
 
 model PlatformSettings {
@@ -1062,5 +1133,86 @@ model PlatformSettings {
   updatedById         String?  @map("updated_by_id") @db.Uuid
   updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  updatedBy Staff? @relation(fields: [updatedById], references: [id], onDelete: Restrict)
+
   @@map("platform_settings")
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// ModaFlow staff (schema "admin"). Separate from subscriber accounts: the
+// subscriber API database role has no access to this schema.
+// ---------------------------------------------------------------------------
+
+enum StaffRole {
+  SUPERADMIN
+  SUPPORT
+
+  @@schema("admin")
+}
+
+enum StaffStatus {
+  ACTIVE
+  DISABLED
+
+  @@schema("admin")
+}
+
+model Staff {
+  id                  String      @id @default(uuid()) @db.Uuid
+  name                String      @db.VarChar(120)
+  email               String      @unique @db.VarChar(254)
+  passwordHash        String?     @map("password_hash")
+  role                StaffRole
+  status              StaffStatus @default(ACTIVE)
+  failedLoginAttempts Int         @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?   @map("locked_until") @db.Timestamptz(3)
+  lastLoginAt         DateTime?   @map("last_login_at") @db.Timestamptz(3)
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions            StaffSession[]
+  setupTokens         StaffSetupToken[]
+  auditLogs           AdminAuditLog[]
+  reviewedPayments    PlanChangeRequest[]   @relation("PaymentReviewer")
+  subscriptionHistory SubscriptionHistory[]
+  subscriptionPeriods SubscriptionPeriod[]
+  planVersions        PlanVersion[]
+  settingsUpdates     PlatformSettings[]
+
+  @@map("staff")
+  @@schema("admin")
+}
+
+model StaffSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  staffId    String   @map("staff_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash") @db.Char(64)
+  ipAddress  String?  @map("ip_address") @db.VarChar(64)
+  userAgent  String?  @map("user_agent") @db.VarChar(512)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  lastUsedAt DateTime @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([expiresAt])
+  @@map("staff_sessions")
+  @@schema("admin")
+}
+
+model StaffSetupToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  staffId   String    @map("staff_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@map("staff_setup_tokens")
+  @@schema("admin")
 }

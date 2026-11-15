@@ -1,5 +1,5 @@
 import type { SaleStatus } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 export function SaleStatusBadge({ status, className }: { status: SaleStatus; className?: string }) {
   return (

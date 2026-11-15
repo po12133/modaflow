@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SaleStatusBadge } from "@/components/sales/sale-status-badge";
-import { formatDateTime, formatMoney, PAYMENT_LABELS, plural } from "@/lib/format";
+import { formatDateTime, formatMoney, PAYMENT_LABELS, plural } from "@modaflow/ui/lib/format";
 import type { SalesReportRow } from "@/types/reports";
 
 export function SalesReportCards({ items }: { items: SalesReportRow[] }) {

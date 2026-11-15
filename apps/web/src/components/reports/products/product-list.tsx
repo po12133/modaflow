@@ -1,5 +1,5 @@
-import { Pagination } from "@/components/pagination";
-import { toQuery } from "@/lib/reports";
+import { Pagination } from "@modaflow/ui/components/pagination";
+import { toQuery } from "@modaflow/ui/lib/query";
 import type { PeriodParams, ProductsReport } from "@/types/reports";
 import type { ProductFilterValues } from "./product-filters";
 import { ProductRow } from "./product-row";

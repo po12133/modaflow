@@ -5,7 +5,9 @@
   "description": "ModaFlow monorepo (Next.js + NestJS + PostgreSQL)",
   "workspaces": [
     "apps/web",
-    "apps/api"
+    "apps/admin-web",
+    "apps/api",
+    "packages/ui"
   ],
   "engines": {
     "node": ">=22.12",
@@ -14,15 +16,18 @@
   "scripts": {
     "dev:web": "npm run dev -w @modaflow/web",
     "dev:api": "npm run start:dev -w @modaflow/api",
-    "build": "npm run build -w @modaflow/api && npm run build -w @modaflow/web",
+    "build": "npm run build -w @modaflow/api && npm run build -w @modaflow/web && npm run build -w @modaflow/admin-web",
     "build:web": "npm run build -w @modaflow/web",
     "build:api": "npm run build -w @modaflow/api",
-    "lint": "npm run lint -w @modaflow/web && npm run lint -w @modaflow/api",
+    "lint": "npm run lint -w @modaflow/ui && npm run lint -w @modaflow/web && npm run lint -w @modaflow/admin-web && npm run lint -w @modaflow/api",
     "prisma:generate": "npm run prisma:generate -w @modaflow/api",
     "prisma:migrate:deploy": "npm run prisma:migrate:deploy -w @modaflow/api",
     "docker:dev": "docker compose -f deploy/development/compose.yaml --env-file .env up -d --build",
     "docker:dev:down": "docker compose -f deploy/development/compose.yaml --env-file .env down",
-    "docker:dev:logs": "docker compose -f deploy/development/compose.yaml --env-file .env logs -f"
+    "docker:dev:logs": "docker compose -f deploy/development/compose.yaml --env-file .env logs -f",
+    "dev:admin-web": "npm run dev -w @modaflow/admin-web",
+    "dev:admin-api": "npm run start:admin -w @modaflow/api",
+    "build:admin-web": "npm run build -w @modaflow/admin-web"
   },
   "allowScripts": {
     "prisma@7.10.1": true,

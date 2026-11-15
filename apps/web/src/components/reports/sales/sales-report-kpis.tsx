@@ -1,6 +1,6 @@
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@modaflow/ui/lib/format";
 import type { Kpis } from "@/types/reports";
-import { KpiCard } from "@/components/common/kpi-card";
+import { KpiCard } from "@modaflow/ui/components/kpi-card";
 
 export function SalesReportKpis({ kpis }: { kpis: Kpis }) {
   return (

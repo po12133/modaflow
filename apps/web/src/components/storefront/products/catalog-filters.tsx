@@ -2,10 +2,10 @@
 
 import { SlidersHorizontal, Search } from "lucide-react";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@modaflow/ui/components/ui/dialog";
+import { Input } from "@modaflow/ui/components/ui/input";
 import { PUBLIC_SORTS } from "@/config/catalog";
-import { useUrlUpdate } from "@/hooks/use-url-update";
+import { useUrlUpdate } from "@modaflow/ui/hooks/use-url-update";
 import type { PublicCategory } from "@/types/catalog";
 
 export interface CatalogFilterValues {

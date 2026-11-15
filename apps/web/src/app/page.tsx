@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { Camera, ChartColumn, ShoppingBag } from "lucide-react";
-import { Brand } from "@/components/brand";
+import { Brand } from "@modaflow/ui/components/brand";
 import { PlanCards } from "@/components/plans/plan-cards";
-import { Button } from "@/components/ui/button";
+import { Button } from "@modaflow/ui/components/ui/button";
 import { getPlans } from "@/lib/dal";
 
 const STEPS = [

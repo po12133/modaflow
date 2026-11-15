@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { formatMoney } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import { RankChart } from "./rank-chart";
+import { formatMoney } from "@modaflow/ui/lib/format";
+import { cn } from "@modaflow/ui/lib/utils";
+import { RankChart } from "@modaflow/ui/components/charts/rank-chart";
 
 export function TopProductsChart({ items }: { items: { name: string; units: number; revenue: string }[] }) {
   const [by, setBy] = useState<"units" | "revenue">("units");

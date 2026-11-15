@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/brand";
+import { LogoMark } from "@modaflow/ui/components/brand";
 import type { PublicStore } from "@/types/catalog";
 
 export function StoreFooter({ store }: { store: PublicStore }) {

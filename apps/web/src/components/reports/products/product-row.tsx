@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ImageOff } from "lucide-react";
-import { formatMoney, plural } from "@/lib/format";
+import { formatMoney, plural } from "@modaflow/ui/lib/format";
 import type { ProductReportRow } from "@/types/reports";
 
 function Profit({ row }: { row: ProductReportRow }) {

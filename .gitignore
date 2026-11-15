@@ -30,3 +30,6 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 *.pem
+
+# guía privada de operaciones (local)
+GUIA-OPERACIONES.html

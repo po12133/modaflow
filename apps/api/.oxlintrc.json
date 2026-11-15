@@ -2,8 +2,25 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "rules": {
     "typescript/no-explicit-any": "off",
-    "typescript/no-floating-promises": "error"
+    "typescript/no-floating-promises": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/admin/**", "**/admin-main*", "../admin", "./admin"],
+            "message": "El sistema de suscriptores no puede depender del sistema de administración."
+          }
+        ]
+      }
+    ]
   },
+  "overrides": [
+    {
+      "files": ["src/admin/**", "src/admin-main.ts", "src/cli/**", "test/**"],
+      "rules": { "no-restricted-imports": "off" }
+    }
+  ],
   "env": {
     "node": true
   }

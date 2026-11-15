@@ -1,5 +1,5 @@
 import type { StockStatus } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 
 const STYLES: Record<StockStatus, { label: string; className: string }> = {
   in_stock: { label: "Disponible", className: "bg-mint/15 text-[#0b7a66]" },

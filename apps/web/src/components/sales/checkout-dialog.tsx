@@ -4,12 +4,12 @@ import { Banknote, CircleAlert, CreditCard, LoaderCircle, QrCode, Send, Wallet }
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createSaleAction, previewSaleAction } from "@/actions/sales";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { formatMoney, PAYMENT_LABELS, variantLabel } from "@/lib/format";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@modaflow/ui/components/ui/dialog";
+import { Input } from "@modaflow/ui/components/ui/input";
+import { formatMoney, PAYMENT_LABELS, variantLabel } from "@modaflow/ui/lib/format";
 import { fromCents, toCents } from "@/lib/sale-math";
 import type { Discount, PaymentMethod, SalePreview } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@modaflow/ui/lib/utils";
 import type { CartLine } from "./pos-client";
 
 const METHODS: { value: PaymentMethod; icon: typeof Banknote }[] = [
