@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@modaflow/ui"],
   ...(pollIntervalMs ? { watchOptions: { pollIntervalMs } } : {}),
   cacheComponents: true,
+  async redirects() {
+    return [
+      { source: "/admin", destination: "/", permanent: false },
+      { source: "/admin/:path*", destination: "/:path*", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

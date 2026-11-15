@@ -31,5 +31,6 @@ Thumbs.db
 .idea/
 *.pem
 
-# guía privada de operaciones (local)
+# guías privadas (local)
 GUIA-OPERACIONES.html
+ENLACES.html

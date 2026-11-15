@@ -1,5 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { generateToken, sha256 } from '../common/crypto.js';
+import { issueSetupLink, SETUP_TTL_HOURS } from '../admin/staff/setup-links.js';
 import { PrismaClient } from '../generated/prisma/client.js';
 import type { StaffRole } from '../generated/prisma/enums.js';
 
@@ -9,7 +9,6 @@ const USAGE = `Uso:
   staff disable <correo>    Desactiva el acceso (no permite dejar sin superadministradores)
   staff enable <correo>
   staff list`;
-const SETUP_TTL_HOURS = 24;
 const REASON = 'Comando de línea (acceso al servidor)';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,14 +25,8 @@ function fail(message: string): never {
 }
 
 async function issueLink(db: Db, staffId: string): Promise<string> {
-  const token = generateToken();
-  await db.$transaction([
-    db.staffSetupToken.deleteMany({ where: { staffId, usedAt: null } }),
-    db.staffSetupToken.create({ data: { staffId, tokenHash: sha256(token), expiresAt: new Date(Date.now() + SETUP_TTL_HOURS * 3_600_000) } }),
-    db.staffSession.deleteMany({ where: { staffId } }),
-  ]);
-  const base = (process.env['ADMIN_WEB_URL'] ?? 'http://localhost:3002').replace(/\/$/, '');
-  return `${base}/acceso?token=${encodeURIComponent(token)}`;
+  const base = process.env['ADMIN_WEB_URL'] ?? 'http://localhost:3002';
+  return (await db.$transaction((tx) => issueSetupLink(tx, staffId, base))).url;
 }
 
 async function audit(db: Db, action: string, staffId: string, after: Record<string, string>) {

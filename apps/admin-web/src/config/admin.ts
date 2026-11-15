@@ -1,16 +1,17 @@
-import { BarChart3, Bell, Building2, ClipboardList, CreditCard, LayoutDashboard, Layers, Receipt, Settings, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Bell, Building2, ClipboardList, CreditCard, LayoutDashboard, Layers, Receipt, Settings, UserCog, Users, type LucideIcon } from "lucide-react";
 
 export const ADMIN_NAV: [string, string, LucideIcon][] = [
-  ["/admin", "Dashboard", LayoutDashboard],
-  ["/admin/negocios", "Negocios", Building2],
-  ["/admin/usuarios", "Usuarios", Users],
-  ["/admin/planes", "Planes", Layers],
-  ["/admin/suscripciones", "Suscripciones", CreditCard],
-  ["/admin/pagos", "Pagos", Receipt],
-  ["/admin/estadisticas", "Estadísticas", BarChart3],
-  ["/admin/notificaciones", "Notificaciones", Bell],
-  ["/admin/auditoria", "Auditoría", ClipboardList],
-  ["/admin/configuracion", "Configuración", Settings],
+  ["/", "Dashboard", LayoutDashboard],
+  ["/negocios", "Negocios", Building2],
+  ["/usuarios", "Usuarios", Users],
+  ["/planes", "Planes", Layers],
+  ["/suscripciones", "Suscripciones", CreditCard],
+  ["/pagos", "Pagos", Receipt],
+  ["/estadisticas", "Estadísticas", BarChart3],
+  ["/notificaciones", "Notificaciones", Bell],
+  ["/auditoria", "Auditoría", ClipboardList],
+  ["/equipo", "Equipo", UserCog],
+  ["/configuracion", "Configuración", Settings],
 ];
 
 export const ADMIN_PERIODS: [string, string][] = [

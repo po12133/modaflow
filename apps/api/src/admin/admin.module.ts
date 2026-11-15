@@ -13,10 +13,12 @@ import { AuditModule } from './audit/audit.module.js';
 import { AdminBillingModule } from './billing/admin-billing.module.js';
 import { SubscriptionExpiryService } from './jobs/subscription-expiry.service.js';
 import { StaffRolesGuard } from './staff-roles.guard.js';
+import { AdminStaffController } from './staff/admin-staff.controller.js';
+import { AdminStaffService } from './staff/admin-staff.service.js';
 
 @Module({
   imports: [AuditModule, AdminBillingModule, NotificationsCoreModule],
-  controllers: [AdminOverviewController, AdminAccountsController, AdminBillingController],
-  providers: [StaffRolesGuard, SubscriptionExpiryService, AdminDashboardService, AdminStatsService, AdminTenantsService, AdminUsersService, AdminPlansService, AdminSubscriptionsService],
+  controllers: [AdminOverviewController, AdminAccountsController, AdminBillingController, AdminStaffController],
+  providers: [StaffRolesGuard, SubscriptionExpiryService, AdminDashboardService, AdminStatsService, AdminTenantsService, AdminUsersService, AdminPlansService, AdminSubscriptionsService, AdminStaffService],
 })
 export class AdminModule {}

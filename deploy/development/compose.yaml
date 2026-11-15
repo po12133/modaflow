@@ -220,6 +220,7 @@ services:
     volumes:
       - ../../apps/admin-web/src:/app/apps/admin-web/src
       - ../../apps/admin-web/public:/app/apps/admin-web/public
+      - ../../apps/admin-web/next.config.ts:/app/apps/admin-web/next.config.ts
       - ../../packages/ui/src:/app/packages/ui/src
     depends_on:
       admin-api:

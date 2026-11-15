@@ -444,6 +444,11 @@ modaflow…        web ───────(red privada)──► api ───
   ```
 
   Cada miembro puede cambiar su contraseña en **Mi cuenta** (`/cuenta`); se cierran sus otras sesiones.
+- **Sección Equipo** (`/equipo` del panel admin): ambos roles ven al equipo (rol, estado, invitación pendiente,
+  bloqueo, último ingreso y sesiones abiertas; nunca contraseñas). Un superadministrador además puede invitar (genera
+  el mismo enlace de un solo uso que el CLI y lo muestra una sola vez), generar un enlace nuevo, cambiar el rol y
+  desactivar o reactivar, siempre con motivo y auditoría. Nadie puede cambiar su propio rol ni desactivarse, y la base
+  bloquea quedarse sin superadministradores activos. El CLI sigue siendo la vía para crear el primer acceso.
 - **Migración de datos**: los superadministradores existentes pasaron a `admin.staff` con el mismo id y la misma
   contraseña, la auditoría se movió a `admin.audit_logs` sin perder filas, y las columnas de autoría (revisó el pago,
   creó la versión, registró el periodo, editó la configuración) apuntan ahora a `admin.staff`. El historial de
@@ -452,7 +457,8 @@ modaflow…        web ───────(red privada)──► api ───
   formatos, gráficos, etiquetas de facturación y tipos comunes. Ambas webs lo compilan con `transpilePackages`.
 
 **Endpoints de la API admin** (además de los de administración de la Etapa 6): `POST /auth/login`, `POST /auth/logout`,
-`GET /auth/me`, `POST /auth/setup-password` (enlace de un solo uso) y `POST /auth/password` (cambio propio).
+`GET /auth/me`, `POST /auth/setup-password` (enlace de un solo uso), `POST /auth/password` (cambio propio),
+`GET|POST /admin/staff`, `POST /admin/staff/:id/setup-link` y `PATCH /admin/staff/:id` (rol o estado, con motivo).
 
 ## Desarrollo con Docker (recomendado)
 
