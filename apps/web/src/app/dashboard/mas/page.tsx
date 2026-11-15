@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Más" };
 // Per-request page (reads the session through the API).
 export const instant = false;
 
-/** Mobile "Más" tab: account sections that don't fit in the bottom bar. */
+/** Mobile "Más" menu (top bar): sections that don't fit in the bottom bar. */
 export default function MorePage() {
   return (
     <>

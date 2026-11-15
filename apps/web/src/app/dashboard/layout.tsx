@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Brand } from "@modaflow/ui/components/brand";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { LogoutButton, StoreAvatar } from "@/components/dashboard/common";
+import { MoreButton } from "@/components/dashboard/more-button";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { SubscriptionStrip } from "@/components/dashboard/subscription-strip";
 import { UsageMeter } from "@/components/dashboard/usage-meter";
@@ -64,7 +65,7 @@ async function DashboardShell({ children }: { children: React.ReactNode }) {
           </span>
           <Link
             href="/dashboard/cuenta"
-            className="ml-auto flex items-center gap-2.5 rounded-xl p-1 hover:bg-white lg:ml-0"
+            className="ml-auto flex shrink-0 items-center gap-2.5 rounded-xl p-1 hover:bg-white lg:ml-0"
             aria-label={`Mi cuenta: ${me.user.name}`}
           >
             <span className="grid size-9 place-items-center rounded-full bg-brand-gradient text-xs font-extrabold text-white">
@@ -75,6 +76,7 @@ async function DashboardShell({ children }: { children: React.ReactNode }) {
               <span className="block text-xs text-muted-foreground">{ROLE_LABELS[me.membership.role]}</span>
             </span>
           </Link>
+          <MoreButton />
         </header>
 
         <div className="print:hidden">

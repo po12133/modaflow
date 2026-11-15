@@ -1,4 +1,4 @@
-import { Bell, ChartLine, CreditCard, Globe, House, Menu, Package, ReceiptText, Settings, ShoppingCart, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, Camera, ChartLine, CreditCard, Globe, House, Menu, Package, ReceiptText, Settings, ShoppingCart, UserRound, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -30,6 +30,8 @@ export const ACCOUNT_NAV: NavItem[] = [
 ];
 
 export const MORE_ITEM: NavItem = { href: "/dashboard/mas", label: "Más", icon: Menu };
+
+export const REGISTER_ITEM: NavItem = { href: "/dashboard/productos/nuevo", label: "Registrar", icon: Camera };
 
 export function isActive(pathname: string, href: string): boolean {
   return href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);

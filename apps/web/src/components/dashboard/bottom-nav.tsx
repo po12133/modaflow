@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@modaflow/ui/lib/utils";
-import { ACCOUNT_NAV, isActive, itemActive, MORE_ITEM, navItem } from "./nav-items";
+import { isActive, itemActive, navItem, REGISTER_ITEM, type NavItem } from "./nav-items";
 
-/** Mobile tab bar: Inicio · Inventario · [Vender] · Reportes · Más (as in the prototype). */
+function tabActive(pathname: string, item: NavItem): boolean {
+  if (item === REGISTER_ITEM) return isActive(pathname, item.href);
+  if (item.href === "/dashboard/productos") return itemActive(pathname, item) && !isActive(pathname, REGISTER_ITEM.href);
+  if (item.href === "/dashboard/ventas/nueva") return itemActive(pathname, item) || itemActive(pathname, navItem("/dashboard/ventas"));
+  return itemActive(pathname, item);
+}
+
 export function BottomNav() {
   const pathname = usePathname();
-  const sell = navItem("/dashboard/ventas/nueva");
-  const sales = navItem("/dashboard/ventas");
-  const moreActive = isActive(pathname, MORE_ITEM.href) || ACCOUNT_NAV.some((i) => isActive(pathname, i.href));
-  const items = [navItem("/dashboard"), navItem("/dashboard/productos"), sell, navItem("/dashboard/reportes"), MORE_ITEM];
+  const items = [navItem("/dashboard"), navItem("/dashboard/productos"), REGISTER_ITEM, navItem("/dashboard/ventas/nueva"), navItem("/dashboard/reportes")];
 
   return (
     <nav
@@ -20,11 +23,9 @@ export function BottomNav() {
     >
       <ul className="mx-auto grid h-16 max-w-lg grid-cols-5 items-end px-1">
         {items.map((item) => {
-          // The sales history has no tab of its own on mobile: it lives under "Vender".
-          const active =
-            item === MORE_ITEM ? moreActive : itemActive(pathname, item) || (item === sell && itemActive(pathname, sales));
+          const active = tabActive(pathname, item);
           const Icon = item.icon;
-          const isMain = item === sell;
+          const isMain = item === REGISTER_ITEM;
           return (
             <li key={item.href} className="h-full">
               <Link
