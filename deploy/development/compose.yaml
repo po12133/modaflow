@@ -45,6 +45,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
       SWAGGER_PATH: ${SWAGGER_PATH:-docs}
+      # Used to build password-reset links.
+      WEB_APP_URL: ${WEB_APP_URL:-http://localhost:3000}
       # Polling watchers: Docker Desktop bind mounts do not forward file events.
       TSC_WATCHFILE: DynamicPriorityPolling
       TSC_WATCHDIRECTORY: DynamicPriorityPolling
@@ -74,7 +76,9 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      # Called from the browser, so it must be reachable from the host.
+      # Server-side calls from Next.js to the API over the internal network.
+      API_INTERNAL_URL: http://api:3001
+      # Public API URL (Swagger links, future browser calls).
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
       WATCH_POLL_INTERVAL_MS: ${WATCH_POLL_INTERVAL_MS:-1000}
     ports:

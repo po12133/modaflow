@@ -65,6 +65,33 @@ export class EnvironmentVariables {
   @IsString()
   @Matches(/^[a-zA-Z0-9/_-]+$/)
   SWAGGER_PATH: string = 'docs';
+
+  /** Absolute lifetime of a login session, in days. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  SESSION_TTL_DAYS: number = 30;
+
+  /** Secure flag for the session cookie. Defaults to true when NODE_ENV=production. */
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  COOKIE_SECURE?: boolean;
+
+  /**
+   * Express "trust proxy" value, so req.ip is the real client behind Coolify's
+   * proxy and the Next.js server. Private ranges only by default.
+   */
+  @IsOptional()
+  @IsString()
+  TRUST_PROXY: string = 'loopback, linklocal, uniquelocal';
+
+  /** Public URL of the web app, used to build links sent to users (password reset). */
+  @IsOptional()
+  @Matches(/^https?:\/\/[^\s/]+$/, { message: 'WEB_APP_URL must be an origin like https://example.com' })
+  WEB_APP_URL: string = 'http://localhost:3000';
 }
 
 /** Validates process.env at startup; the app refuses to boot on invalid config. */

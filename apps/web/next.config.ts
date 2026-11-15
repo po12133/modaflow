@@ -17,6 +17,24 @@ const nextConfig: NextConfig = {
   ...(pollIntervalMs ? { watchOptions: { pollIntervalMs } } : {}),
   cacheComponents: true,
   partialPrefetching: true,
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
+        ],
+      },
+      {
+        // Reset links carry a token in the query string: never leak it via Referer.
+        source: "/restablecer-contrasena",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+    ];
+  },
   turbopack: {
     root: monorepoRoot,
     rules: {

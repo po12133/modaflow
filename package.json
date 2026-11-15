@@ -27,7 +27,8 @@
   "allowScripts": {
     "prisma@7.10.1": true,
     "@prisma/engines@7.10.1": true,
-    "@scarf/scarf": false
+    "@scarf/scarf": false,
+    "esbuild": false
   },
   "packageManager": "npm@11.21.2"
 }

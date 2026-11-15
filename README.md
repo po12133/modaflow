@@ -53,11 +53,55 @@ Usa una contraseña segura para URL (letras y números), por ejemplo `openssl ra
 | `CORS_ORIGINS` | privada | api | Orígenes permitidos separados por comas, o `*` |
 | `SWAGGER_ENABLED` | privada | api | Activa Swagger UI (`true` en desarrollo; `false` por defecto en producción) |
 | `SWAGGER_PATH` | privada | api | Ruta de Swagger UI (por defecto `docs`) |
-| `NEXT_PUBLIC_API_URL` | **pública** | web | URL de la API usada por el navegador. Se incrusta en el bundle **al construir** |
+| `SESSION_TTL_DAYS` | privada | api | Duración de la sesión en días (por defecto 30) |
+| `COOKIE_SECURE` | privada | api | Cookie `Secure`; por defecto `true` si `NODE_ENV=production` |
+| `TRUST_PROXY` | privada | api | Proxies de confianza para obtener la IP real (por defecto redes privadas) |
+| `WEB_APP_URL` | privada | api | URL pública del frontend, para los enlaces de recuperación de contraseña |
+| `API_INTERNAL_URL` | privada | web (servidor) | URL interna de la API para Next.js (`http://api:3001`, la fija cada compose) |
+| `NEXT_PUBLIC_API_URL` | **pública** | web | URL pública de la API. Se incrusta en el bundle **al construir** |
 
-Separación público/privado: el contenedor `web` solo recibe `NEXT_PUBLIC_API_URL`; nunca recibe
+Separación público/privado: el contenedor `web` solo recibe `API_INTERNAL_URL` y `NEXT_PUBLIC_API_URL`; nunca recibe
 credenciales de PostgreSQL. Cualquier variable `NEXT_PUBLIC_*` es visible en el navegador: no pongas secretos ahí.
 La API valida sus variables al arrancar ([env.validation.ts](apps/api/src/config/env.validation.ts)) y se niega a iniciar si son inválidas.
+
+## Arquitectura (Etapa 1: plataforma del suscriptor)
+
+**Autenticación (sesiones en servidor, patrón BFF)**
+- El navegador solo habla con Next.js. Las Server Actions llaman a la API por la red interna (`API_INTERNAL_URL`)
+  reenviando la cookie de sesión. La cookie `mf_session` es `HttpOnly`, `SameSite=Lax` y `Secure` en producción,
+  y vive en el dominio del frontend. No se guarda nada en `localStorage`.
+- La API guarda solo el hash SHA-256 del token de sesión (tabla `sessions`), revocable al cerrar sesión.
+- Contraseñas con **Argon2id** (`@node-rs/argon2`, parámetros OWASP).
+- Protección contra fuerza bruta: bloqueo de la cuenta 15 min tras 5 intentos fallidos y límite por IP
+  (`@nestjs/throttler`: 10 intentos/min en login y registro, 5 cada 15 min en recuperación).
+- CSRF: las Server Actions de Next verifican el `Origin`, y la API rechaza peticiones de navegador con un `Origin`
+  que no esté en `CORS_ORIGINS` (`OriginGuard`).
+- Recuperación de contraseña: token de un solo uso (60 min). **Aún no hay SMTP**: en desarrollo el enlace se
+  escribe en los logs de `api`; en producción solo se registra que el correo no se envió.
+
+**Multiempresa**
+- `Tenant` (negocio) → `Store` (tiendas) y `TenantMembership` (usuario + rol `OWNER`/`ADMIN`/`SELLER`).
+- El tenant de cada petición se resuelve **siempre** desde la membresía del usuario autenticado (`TenantGuard`).
+  La API rechaza cualquier `tenantId` enviado por el cliente (`forbidNonWhitelisted`) y filtra todas las consultas por tenant.
+
+**Planes, prueba gratuita y límites**
+- Los planes (Gratis, Básico, Pro, Premium) viven en la tabla `plans` y se cargan con el seed
+  ([plan-catalog.ts](apps/api/src/plans/plan-catalog.ts)). Pro es el recomendado. No existe el plan Empresarial.
+- La prueba de 14 días se activa al crear la primera tienda, en la misma transacción que crea el tenant.
+  Se concede una sola vez por usuario y por WhatsApp del negocio (`trial_grants`).
+- Al vencer, la cuenta queda en solo lectura: los datos se pueden consultar y se puede entrar a la sección de
+  suscripción. Los datos se conservan al menos 30 días más (`dataRetentionUntil`, sin borrado automático).
+- `EntitlementsService` es el servicio central de límites y funciones. Los futuros módulos lo usan con
+  `@RequireActiveSubscription()`, `@RequireFeature('advancedReports')`, `assertWithinLimit()` o `consumeAiAnalysis()`.
+- El suscriptor solo puede **solicitar** un cambio de plan (`plan_change_requests`). No hay pagos ni activación
+  automática de planes de pago.
+
+**Endpoints** (ver Swagger): `/auth/*`, `/users/me`, `/onboarding`, `/stores/current`, `/plans`, `/subscription`,
+`/subscription/change-requests`, `/health`.
+
+**Frontend**: `/`, `/registro`, `/login`, `/recuperar-contrasena`, `/restablecer-contrasena`, `/onboarding`,
+`/dashboard` (+ `suscripcion`, `configuracion`, `cuenta`, `mas`; `inventario`, `vender` y `reportes` aparecen como
+"En desarrollo"). Mobile first: en el celular hay barra inferior y en escritorio una barra lateral.
 
 ## Desarrollo con Docker (recomendado)
 
@@ -132,20 +176,42 @@ npm run dev:api                               # http://localhost:3001 (lee ../..
 npm run dev:web                               # http://localhost:3000
 ```
 
-Otros comandos: `npm run build`, `npm run lint`, `npm test -w @modaflow/api`,
-`npm run test:e2e -w @modaflow/api` (requiere PostgreSQL en marcha), `npm run prisma:generate`.
+Otros comandos: `npm run build`, `npm run lint`, `npm run prisma:generate`.
+
+## Pruebas
+
+```bash
+# Unitarias (reglas de planes, prueba gratuita, límites, guards, login/bloqueo, WhatsApp)
+npm test -w @modaflow/api
+
+# E2E contra PostgreSQL real, en una base de datos separada *_test (se niegan a ejecutarse en otra)
+docker compose -f deploy/development/compose.yaml exec postgres sh -c 'createdb -U "$POSTGRES_USER" modaflow_test'
+cd apps/api
+export DATABASE_URL="postgresql://modaflow:<password>@localhost:5432/modaflow_test?schema=public"
+npx prisma migrate deploy && npx prisma db seed
+npm run test:e2e
+```
+
+Las pruebas e2e cubren: registro, login/logout, bloqueo por intentos, CSRF por origen, recuperación de contraseña,
+protección de rutas, onboarding transaccional, prueba de 14 días (y que no se reinicia), planes, días restantes,
+edición de la tienda, aislamiento entre tenants, solicitudes de cambio de plan y modo de solo lectura al vencer.
 
 Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
 
 ## Prisma
 
 - Configuración: [apps/api/prisma7.config.ts](apps/api/prisma7.config.ts) (nombre de archivo propio de Prisma 7.10) y
-  [apps/api/prisma/schema.prisma](apps/api/prisma/schema.prisma). Todavía **no hay modelos**.
+  [apps/api/prisma/schema.prisma](apps/api/prisma/schema.prisma).
+- Modelos: `User`, `Session`, `PasswordResetToken`, `Tenant`, `TenantMembership`, `Store`, `Plan`, `Subscription`,
+  `SubscriptionUsage`, `TrialGrant` y `PlanChangeRequest`, con claves foráneas, índices y restricciones `CHECK`.
+- Migraciones versionadas en `apps/api/prisma/migrations`. Al arrancar, el contenedor `api` (desarrollo y
+  producción) ejecuta `prisma migrate deploy` (solo aplica migraciones pendientes, nunca borra datos) y el seed de planes.
+- Nueva migración en desarrollo: `npm run prisma:migrate:dev -w @modaflow/api -- --name <nombre>`.
+- Seed manual: `npm run prisma:seed -w @modaflow/api`. Es idempotente: actualiza los planes por `code` y desactiva
+  los que ya no estén en el catálogo.
 - Prisma 7 usa *driver adapters*: la conexión se hace con `@prisma/adapter-pg` ([prisma.service.ts](apps/api/src/prisma/prisma.service.ts)).
 - El cliente se genera en `apps/api/src/generated/prisma` (ignorado por git) con `npm run prisma:generate`;
   `npm run build` y el contenedor de desarrollo lo generan automáticamente.
-- Cuando existan modelos: `npm run prisma:migrate:dev -w @modaflow/api -- --name <nombre>` en local y, en producción,
-  `npx prisma migrate deploy` dentro del contenedor `api` (la imagen incluye el CLI, el schema y la configuración).
 
 ## Producción y Coolify
 

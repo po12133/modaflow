@@ -15,6 +15,8 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    // `prisma db seed` (development). Production runs the compiled dist/prisma/seed.js.
+    seed: "tsx src/prisma/seed.ts",
   },
   datasource: {
     url: process.env["DATABASE_URL"],

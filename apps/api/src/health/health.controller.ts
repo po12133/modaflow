@@ -1,9 +1,14 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiServiceUnavailableResponse, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
+import { Public } from '../auth/decorators.js';
 import { HealthResponseDto } from './health.dto.js';
 import { HealthService } from './health.service.js';
 
+// Probed by Docker/Coolify healthchecks: no session and no rate limit.
+@Public()
+@SkipThrottle()
 @ApiTags('health')
 @Controller('health')
 export class HealthController {

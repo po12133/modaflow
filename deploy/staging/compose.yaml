@@ -55,6 +55,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-https://staging.modaflow.amicornios.com}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
       SWAGGER_PATH: ${SWAGGER_PATH:-docs}
+      # Public web URL, used to build password-reset links.
+      WEB_APP_URL: ${WEB_APP_URL:-https://staging.modaflow.amicornios.com}
     expose:
       - "3001"
     depends_on:
@@ -82,6 +84,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      # Server-side calls from Next.js to the API over the internal network.
+      API_INTERNAL_URL: http://api:3001
     expose:
       - "3000"
     depends_on:

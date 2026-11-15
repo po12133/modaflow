@@ -1,0 +1,109 @@
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { SessionService } from '../auth/session.service.js';
+import { AppError } from '../common/app-error.js';
+import { generateToken } from '../common/crypto.js';
+import type { AuthContext } from '../common/request-context.js';
+import { Prisma } from '../generated/prisma/client.js';
+import { TRIAL_PLAN_CODE } from '../plans/plan-catalog.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { STORE_SELECT } from '../stores/stores.service.js';
+import type { StoreFieldsDto } from '../stores/dto.js';
+import { slugify } from '../stores/store-fields.js';
+import { addDays } from '../subscriptions/entitlement-rules.js';
+
+@Injectable()
+export class OnboardingService {
+  private readonly logger = new Logger(OnboardingService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sessions: SessionService,
+  ) {}
+
+  /**
+   * Creates tenant + first store + OWNER membership + subscription in a single
+   * transaction. The 14-day trial is granted only once per user and per
+   * business WhatsApp (TrialGrant), so recreating a store cannot restart it.
+   */
+  async createFirstStore(auth: AuthContext, dto: StoreFieldsDto) {
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Serialize onboarding per user (double submit => second call sees the membership).
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${auth.userId}::uuid FOR UPDATE`;
+
+        const existing = await tx.tenantMembership.count({ where: { userId: auth.userId } });
+        if (existing > 0) {
+          throw new AppError(HttpStatus.CONFLICT, 'ALREADY_ONBOARDED', 'Tu tienda ya está creada.');
+        }
+
+        const trialPlan = await tx.plan.findUnique({ where: { code: TRIAL_PLAN_CODE } });
+        if (!trialPlan?.durationDays) {
+          throw new Error(`Plan "${TRIAL_PLAN_CODE}" missing: run the Prisma seed.`);
+        }
+
+        const previousGrant = await tx.trialGrant.findFirst({
+          where: { OR: [{ userId: auth.userId }, { whatsappNormalized: dto.whatsapp }] },
+          select: { id: true },
+        });
+        const trialGranted = !previousGrant;
+
+        const tenant = await tx.tenant.create({ data: { name: dto.name } });
+        await tx.tenantMembership.create({ data: { tenantId: tenant.id, userId: auth.userId, role: 'OWNER' } });
+
+        const store = await tx.store.create({
+          data: {
+            tenantId: tenant.id,
+            slug: await this.uniqueSlug(tx, dto.name),
+            name: dto.name,
+            description: dto.description ?? null,
+            whatsapp: dto.whatsapp,
+            city: dto.city,
+            address: dto.address ?? null,
+            primaryColor: dto.primaryColor,
+          },
+          select: STORE_SELECT,
+        });
+
+        const now = new Date();
+        const trialEndsAt = addDays(now, trialPlan.durationDays);
+        await tx.subscription.create({
+          data: {
+            tenantId: tenant.id,
+            planId: trialPlan.id,
+            // Without trial eligibility the store is created read-only until a plan is requested.
+            status: trialGranted ? 'TRIALING' : 'EXPIRED',
+            startedAt: now,
+            currentPeriodEnd: trialGranted ? trialEndsAt : now,
+          },
+        });
+        if (trialGranted) {
+          await tx.trialGrant.create({
+            data: { userId: auth.userId, tenantId: tenant.id, whatsappNormalized: dto.whatsapp },
+          });
+        }
+
+        return { tenantId: tenant.id, store, trialGranted, trialEndsAt: trialGranted ? trialEndsAt : null };
+      });
+
+      await this.sessions.setActiveTenant(auth.sessionId, result.tenantId);
+      this.logger.log(`Tenant ${result.tenantId} created (trial ${result.trialGranted ? 'granted' : 'not eligible'})`);
+      return result;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        // Concurrent onboarding with the same WhatsApp or slug: nothing was persisted.
+        throw new AppError(HttpStatus.CONFLICT, 'ALREADY_ONBOARDED', 'No se pudo crear la tienda. Intenta de nuevo.');
+      }
+      throw error;
+    }
+  }
+
+  private async uniqueSlug(tx: Prisma.TransactionClient, name: string): Promise<string> {
+    const base = slugify(name);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = attempt === 0 ? base : `${base.slice(0, 52)}-${generateToken(4).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6)}`;
+      const taken = await tx.store.findUnique({ where: { slug: candidate }, select: { id: true } });
+      if (!taken) return candidate;
+    }
+    return `${base.slice(0, 40)}-${Date.now().toString(36)}`;
+  }
+}

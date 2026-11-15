@@ -34,7 +34,9 @@ ENV NODE_ENV=development
 COPY apps/api apps/api
 WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["sh", "-c", "npx prisma generate && npm run start:dev"]
+# Generate the client, apply pending migrations (never resets data) and load
+# the plan catalog (idempotent upsert) before starting the watcher.
+CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && npx prisma db seed && npm run start:dev"]
 
 # ---------- build ----------
 FROM deps AS build
@@ -70,4 +72,6 @@ COPY --from=build --chown=node:node /app/apps/api/prisma7.config.ts ./apps/api/p
 USER node
 WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
+# On every start: apply pending versioned migrations (`migrate deploy` never
+# drops data or resets the database), upsert the plan catalog, then serve.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && exec node dist/main.js"]

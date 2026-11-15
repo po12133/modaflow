@@ -1,37 +1,19 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
+import { configureApp } from './app.setup.js';
+import { SESSION_COOKIE } from './auth/session.service.js';
 import { EnvironmentVariables } from './config/env.validation.js';
 
-function parseCorsOrigins(value: string): string[] | true {
-  const trimmed = value.trim();
-  if (trimmed === '*') return true;
-  return trimmed
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-}
-
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
   const logger = new Logger('Bootstrap');
 
-  app.enableCors({
-    origin: parseCorsOrigins(config.get('CORS_ORIGINS', { infer: true })),
-    credentials: true,
-  });
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
+  configureApp(app);
   app.enableShutdownHooks();
 
   if (config.get('SWAGGER_ENABLED', { infer: true })) {
@@ -40,8 +22,12 @@ async function bootstrap() {
       app,
       new DocumentBuilder()
         .setTitle('ModaFlow API')
-        .setDescription('ModaFlow backend API')
-        .setVersion('0.1.0')
+        .setDescription(
+          'API de ModaFlow. Autenticación por cookie HttpOnly `mf_session` (POST /auth/login). ' +
+            'Las peticiones de navegador que modifican datos deben venir de un origen permitido (CORS_ORIGINS).',
+        )
+        .setVersion('0.2.0')
+        .addCookieAuth(SESSION_COOKIE)
         .build(),
     );
     SwaggerModule.setup(swaggerPath, app, document);
