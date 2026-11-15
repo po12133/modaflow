@@ -16,6 +16,7 @@ import { PlansModule } from './plans/plans.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProductsModule } from './products/products.module.js';
 import { ReportsModule } from './reports/reports.module.js';
+import { StorefrontModule } from './storefront/storefront.module.js';
 import { SalesModule } from './sales/sales.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { StoresModule } from './stores/stores.module.js';
@@ -56,6 +57,8 @@ import { UsersModule } from './users/users.module.js';
     SalesModule,
     // Stage 4
     ReportsModule,
+    // Stage 5
+    StorefrontModule,
   ],
   providers: [
     // Global guards run in this order: rate limit -> CSRF origin check -> session.

@@ -164,6 +164,8 @@ export interface ProductListItem {
 export interface ProductDetail {
   id: string;
   sku: string;
+  slug: string;
+  catalogPublished: boolean;
   name: string;
   description: string | null;
   garmentType: string | null;

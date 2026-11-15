@@ -47,7 +47,13 @@ export type AppErrorCode =
   | 'SALE_NOT_FOUND'
   | 'SALE_ALREADY_CANCELED'
   | 'PRODUCT_UNAVAILABLE'
-  | 'RECEIPT_NOT_FOUND';
+  | 'RECEIPT_NOT_FOUND'
+  | 'CATALOG_UNAVAILABLE'
+  | 'CATALOG_PRODUCT_NOT_FOUND'
+  | 'CATALOG_ITEMS_UNAVAILABLE'
+  | 'CATALOG_REQUEST_NOT_FOUND'
+  | 'SLUG_TAKEN'
+  | 'SLUG_INVALID';
 
 export class AppError extends HttpException {
   constructor(

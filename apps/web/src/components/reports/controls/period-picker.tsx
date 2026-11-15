@@ -4,7 +4,7 @@ import { CalendarRange } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { REPORT_PERIODS } from "@/config/reports";
-import { chip, useUrlUpdate } from "./use-url-update";
+import { chip, useUrlUpdate } from "@/hooks/use-url-update";
 
 export function PeriodPicker({ period, from, to }: { period: string; from: string; to: string }) {
   const { update, pending } = useUrlUpdate();

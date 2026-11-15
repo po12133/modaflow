@@ -6,7 +6,8 @@ import { LockedPanel } from "@/components/reports/ui/locked-panel";
 import { NoReportAccess } from "@/components/reports/ui/no-report-access";
 import { ReportShell } from "@/components/reports/ui/report-shell";
 import { getDashboardContext } from "@/lib/dal";
-import { periodParams, searchParam as one } from "@/lib/reports";
+import { periodParams } from "@/lib/reports";
+import { searchParam as one } from "@/lib/search-params";
 import { getInventoryReport } from "@/services/reports";
 
 export const metadata: Metadata = { title: "Reporte de inventario" };

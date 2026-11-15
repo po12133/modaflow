@@ -272,6 +272,53 @@ probada sin base de datos (`report-periods`, `report-spans`, `report-buckets`, `
 Web: `src/types/reports.ts` (tipos), `src/config/reports.ts` (declaraciones), `src/lib/reports.ts` (funciones puras),
 `src/services/reports.ts` (I/O), `src/components/reports/*` (presentación) y páginas que solo componen.
 
+## Arquitectura (Etapa 5: catálogo online, pedidos por WhatsApp y QR)
+
+**Catálogo público** en `/tienda/{slug}` (sin registro): portada, logotipo, descripción, ciudad, botón de WhatsApp,
+búsqueda (nombre, categoría, color, talla, etiquetas), filtros (categoría, talla, color, rango de precio,
+disponibilidad), orden (recientes, precio, nombre) y paginación en el backend (24 por página). Detalle en
+`/tienda/{slug}/producto/{productSlug}` con galería (miniaturas y vista ampliada), variantes disponibles y cantidad
+limitada al stock informado. También `/categorias`, `/carrito` e `/info`. Plantilla única adaptada con el color
+principal y secundario de cada tienda (MioShop es solo un ejemplo de personalización).
+
+**Conectado al inventario real**: no hay inventario aparte. Cada producto tiene `catalog_published` (publicar u ocultar,
+individual o masivo, no cambia stock ni estado) y un `slug` público único por tienda (nombre + SKU). Solo se muestran
+productos activos y publicados; los agotados se muestran como "Agotado" o se ocultan según la configuración y nunca
+pueden pedirse. La API pública no expone ids internos, costos, stock exacto (se informa hasta 10) ni datos de vendedores.
+
+**Carrito y WhatsApp**: el carrito vive en `localStorage` del comprador (es solo una selección, no reserva ni descuenta
+stock). "Pedir por WhatsApp" valida en el backend productos, variantes y stock con precios vigentes, registra una
+`CatalogOrderRequest` (código aleatorio, productos, variantes, cantidades, precios y total referencial), muestra el
+mensaje para revisarlo y abre `wa.me/{whatsapp de la tienda}`. Al tocar "Abrir WhatsApp" la solicitud pasa a "WhatsApp
+abierto" (acción iniciada con un token de un solo uso; no se afirma que el mensaje llegó). Nunca se crea una venta ni se
+descuenta stock: la venta se registra en el punto de venta. `sale_id` queda preparado para vincularlas en el futuro.
+
+**Panel**: `/dashboard/catalogo` (estado, enlace, ver/copiar/compartir, QR descargable en PNG y SVG con solo la URL
+pública, indicadores reales), `/configuracion` (nombre, dirección validada y no reservada, descripción, logotipo,
+portada, colores, WhatsApp, mensaje predeterminado, agotados, publicado/oculto), `/productos` (publicación masiva),
+`/solicitudes` y su detalle (atendida/cancelada). La ficha de producto tiene "Mostrar en catálogo online".
+
+**Planes**: catálogo en Gratis (solo durante la prueba), Pro y Premium; Básico no. NestJS valida el plan en cada consulta
+pública y en cada cambio. Si la suscripción vence o el plan no lo incluye, el catálogo muestra una página neutral
+"Catálogo no disponible" (sin datos de facturación, `noindex`; en producción con HTTP 200 por el *streaming* de Next) y se
+conservan productos, fotos, publicación y configuración.
+
+**SEO**: metadatos dinámicos, URL canónica y Open Graph/Twitter por tienda y producto (imagen estable
+`/tienda/{slug}/imagen` y `/producto/{slug}/imagen` que redirige a la foto firmada), `sitemap.xml` dinámico solo con
+catálogos disponibles y productos publicados, y `robots.txt` que excluye panel, API, boletas y carrito.
+
+**Rendimiento**: consultas paginadas con índices (`products(tenant_id, catalog_published, status, created_at)`, slug
+único por tienda), miniaturas WebP, `loading="lazy"` y prioridad para las primeras fotos. Las páginas públicas se
+renderizan por solicitud sin caché de datos de negocio, así que una venta, un cambio de stock, archivar, publicar u
+ocultar o un cambio de plan se reflejan de inmediato sin invalidaciones manuales.
+
+**Endpoints públicos** (`@Public`, límite 120/min; creación de solicitudes 10/min): `GET /public/stores/:slug`,
+`/categories`, `/products`, `/products/:productSlug`, `POST /public/stores/:slug/order-requests`,
+`POST /public/stores/:slug/order-requests/:code/whatsapp` y `GET /public/sitemap`. **Privados**: `GET|PATCH
+/catalog/settings`, `GET /catalog/slug-availability`, `POST|DELETE /catalog/media/:kind`, `GET /catalog/summary`,
+`GET /catalog/products`, `PATCH /catalog/products/:id`, `POST /catalog/products/bulk-update`,
+`GET /catalog/order-requests`, `GET|PATCH /catalog/order-requests/:id`.
+
 ## Desarrollo con Docker (recomendado)
 
 Desde la raíz del repositorio:
@@ -384,6 +431,10 @@ Las pruebas e2e cubren:
   límites de día/semana/quincena/mes en la zona de la tienda, periodo personalizado, comparación, ranking de productos,
   métodos de pago, inventario y stock bajo, Excel (números, totales, anti-fórmulas) y PDF, restricciones por plan y rol,
   aislamiento entre tiendas y 20.000 ventas sintéticas (consultas < 3 s, Excel en streaming).
+- **Etapa 5:** configuración y slugs (únicos, formato, reservados), publicación individual y masiva sin cambiar stock,
+  consulta pública anónima sin datos privados, búsqueda, filtros, orden y paginación, detalle y variantes, agotados
+  (mostrar/ocultar), solicitudes con precios del servidor, mensaje y enlace de WhatsApp, stock sin cambios, token de
+  "WhatsApp abierto", catálogo oculto, sitemap, planes (Básico, Pro, prueba vencida) y aislamiento entre tiendas.
 
 En las pruebas de créditos, el modelo de visión se reemplaza por un **doble de prueba**: se prueba la lógica real de
 créditos y no se simula a Claude. La llamada real a Claude tiene su propia prueba, que solo se ejecuta con clave:
@@ -402,10 +453,12 @@ Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
   `SubscriptionUsage`, `TrialGrant` y `PlanChangeRequest` (Etapa 1); `Category`, `Tag`, `ProductTag`, `Product`,
   `ProductVariant`, `ProductImage`, `InventoryMovement` y `AiAnalysis` (Etapa 2); `Sale`, `SaleItem` y
   `SaleCancellation` (Etapa 3); costos históricos, total neto y categoría en `SaleItem` y zona horaria en `Store`
-  (Etapa 4). Todos con claves foráneas,
+  (Etapa 4); `CatalogSettings`, `CatalogOrderRequest`, `CatalogOrderRequestItem`, y `slug`/`catalogPublished` en
+  `Product` (Etapa 5). Todos con claves foráneas,
   índices (incluidos índices trigram `pg_trgm` para la búsqueda) y restricciones `CHECK`.
 - Migraciones: `20261115015333_init_tenancy_and_subscriptions`, `20261115030329_catalog_inventory_ai`,
-  `20261115040424_sale_movement_types`, `20261115040539_sales_pos_receipts` y `20261115120000_reports_costs_timezone`. Desde la segunda solo agregan tablas,
+  `20261115040424_sale_movement_types`, `20261115040539_sales_pos_receipts`, `20261115120000_reports_costs_timezone` y `20261115180000_online_catalog` (rellena
+  el slug de los productos existentes). Desde la segunda solo agregan tablas,
   valores de enum, columnas con valor por defecto o nulas (`tenants.product_seq`, `tenants.sale_seq`,
   `inventory_movements.sale_id`) y restricciones, sin cambios destructivos. Los valores nuevos del enum de
   movimientos van en una migración aparte porque PostgreSQL no permite usarlos en la misma transacción que los crea.
@@ -562,6 +615,7 @@ Variables de entorno de staging (distintas de producción, **otra contraseña**)
 | pdfkit (Etapa 3) | 0.20.2 |
 | exceljs (Etapa 4; `uuid` forzado a 11.1.1 por `overrides`) | 4.4.0 |
 | recharts (Etapa 4) | 3.10.1 |
+| qrcode (Etapa 5) | 1.5.4 |
 | zod (web y api) | 4.6.7 |
 | @nestjs/throttler / @node-rs/argon2 (Etapa 1) | 6.7.1 / 2.2.2 |
 | SeaweedFS (S3 local, solo desarrollo) | 4.53 |

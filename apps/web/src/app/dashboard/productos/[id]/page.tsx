@@ -8,6 +8,7 @@ import { ArchiveButton } from "@/components/products/archive-button";
 import { StockBadge } from "@/components/products/stock-badge";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { CatalogPublishRow } from "@/components/catalog-admin/catalog-publish-row";
 import { getDashboardContext, getProduct } from "@/lib/dal";
 import { formatDate, formatMoney, variantLabel } from "@/lib/format";
 import type { Movement, Paginated } from "@/lib/types";
@@ -120,6 +121,8 @@ export default async function ProductDetailPage({ params, searchParams }: PagePr
               ))}
             </ul>
           )}
+
+          {!archived && canAdmin && <CatalogPublishRow id={product.id} published={product.catalogPublished} enabled={subscription.features.onlineCatalog} />}
 
           <div className="flex flex-wrap gap-2">
             {!archived && (

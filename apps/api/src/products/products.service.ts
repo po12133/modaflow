@@ -7,6 +7,7 @@ import { ImagesService } from '../images/images.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { EntitlementsService } from '../subscriptions/entitlements.service.js';
 import type { CreateProductDto, ListProductsQueryDto, UpdateProductDto, VariantInputDto } from './dto.js';
+import { uniqueProductSlug } from './product-slug.js';
 import {
   findDuplicateVariant,
   formatProductSku,
@@ -182,6 +183,7 @@ export class ProductsService {
             categoryId,
             createdById: userId,
             sku,
+            slug: await uniqueProductSlug(tx, tenantId, dto.name, sku),
             name: cleanText(dto.name),
             description: dto.description ?? null,
             garmentType: dto.garmentType ?? null,
@@ -485,6 +487,8 @@ export class ProductsService {
     return {
       id: p.id,
       sku: p.sku,
+      slug: p.slug,
+      catalogPublished: p.catalogPublished,
       name: p.name,
       description: p.description,
       garmentType: p.garmentType,

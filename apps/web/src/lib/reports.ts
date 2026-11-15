@@ -38,4 +38,3 @@ export function periodRangeText(p: ReportPeriodView): string {
   return p.from === p.to ? fmtDay(p.from) : `${fmtDay(p.from)} – ${fmtDay(p.to)}`;
 }
 
-export const searchParam = (v: string | string[] | undefined) => (typeof v === "string" && v ? v : undefined);

@@ -390,7 +390,7 @@ describe('Catalog, inventory and AI (e2e)', () => {
       const user = await prisma.tenantMembership.findFirstOrThrow({ where: { tenantId } });
       await prisma.product.createMany({
         data: Array.from({ length: 28 }, (_, i) => ({
-          tenantId, storeId: store.id, createdById: user.userId, sku: `SEED-${i}`, name: `Seed ${i}`, salePrice: '10',
+          tenantId, storeId: store.id, createdById: user.userId, sku: `SEED-${i}`, slug: `seed-${i}`, name: `Seed ${i}`, salePrice: '10',
         })),
       });
       const results = await Promise.all(Array.from({ length: 6 }, (_, i) => createProduct(a, { name: `Carrera ${i}` })));

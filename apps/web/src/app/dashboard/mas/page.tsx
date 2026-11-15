@@ -15,7 +15,7 @@ export default function MorePage() {
     <>
       <PageHeader title="Más opciones" />
       <nav aria-label="Más opciones" className="grid gap-2">
-        {[{ ...navItem("/dashboard/ventas"), label: "Historial de ventas" }, ...ACCOUNT_NAV].map(({ href, label, icon: Icon }) => (
+        {[{ ...navItem("/dashboard/ventas"), label: "Historial de ventas" }, { ...navItem("/dashboard/catalogo"), label: "Catálogo online" }, ...ACCOUNT_NAV].map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
