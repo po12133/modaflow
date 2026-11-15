@@ -24,7 +24,11 @@ export enum AppEnv {
   Production = 'production',
 }
 
-const toBoolean =({ value }: { value: unknown }): unknown =>
+/** Compose passes unset optional variables as "" — treat them as missing. */
+const emptyToUndefined = ({ value }: { value: unknown }): unknown =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
+
+const toBoolean = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim().toLowerCase() === 'true' : value;
 
 export class EnvironmentVariables {
@@ -92,6 +96,85 @@ export class EnvironmentVariables {
   @IsOptional()
   @Matches(/^https?:\/\/[^\s/]+$/, { message: 'WEB_APP_URL must be an origin like https://example.com' })
   WEB_APP_URL: string = 'http://localhost:3000';
+
+  // ---- Claude API (garment recognition). Without a key, AI analysis is disabled. ----
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  ANTHROPIC_API_KEY?: string;
+
+  /** Vision-capable Claude model id. */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  @Matches(/^[a-z0-9.-]+$/)
+  ANTHROPIC_MODEL: string = 'claude-opus-5-5';
+
+  /** Max time for one analysis request to Claude (ms). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(5_000)
+  @Max(180_000)
+  AI_TIMEOUT_MS: number = 60_000;
+
+  // ---- S3-compatible storage (product photos). Without it, photo upload is disabled. ----
+
+  /** Endpoint the API uses (e.g. https://<account>.r2.cloudflarestorage.com, http://minio:9000). Empty = AWS S3. */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  S3_ENDPOINT?: string;
+
+  /**
+   * Endpoint used in signed URLs given to browsers, when it differs from
+   * S3_ENDPOINT (e.g. http://localhost:9000 in Docker development).
+   */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  S3_PUBLIC_ENDPOINT?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  S3_REGION: string = 'us-east-1';
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  S3_BUCKET?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  S3_ACCESS_KEY_ID?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  S3_SECRET_ACCESS_KEY?: string;
+
+  /** Path-style URLs (required by MinIO and most self-hosted S3). */
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  S3_FORCE_PATH_STYLE: boolean = true;
+
+  /** Development only: create S3_BUCKET at startup if it does not exist. */
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  S3_AUTO_CREATE_BUCKET: boolean = false;
+
+  /** Lifetime of signed photo URLs (seconds). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(60)
+  @Max(86_400)
+  S3_SIGNED_URL_TTL_SECONDS: number = 3_600;
 }
 
 /** Validates process.env at startup; the app refuses to boot on invalid config. */

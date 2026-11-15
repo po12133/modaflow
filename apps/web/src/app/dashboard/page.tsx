@@ -51,14 +51,14 @@ export default async function DashboardHome({ searchParams }: PageProps<"/dashbo
         </h2>
         <div className="grid grid-cols-2 gap-3">
           <Link
-            href="/dashboard/inventario"
+            href="/dashboard/productos/nuevo"
             className="grid min-h-32 content-start gap-1 rounded-[20px] bg-brand-gradient p-4 text-white shadow-[0_16px_30px_-18px_rgba(22,19,43,0.6)] transition-transform active:scale-[0.98]"
           >
             <span className="mb-1 grid size-12 place-items-center rounded-2xl bg-white/20">
               <Camera className="size-6" aria-hidden="true" />
             </span>
             <b className="text-base leading-tight">Registrar prenda</b>
-            {SOON_TAG}
+            <span className="text-xs opacity-90">Con foto e IA</span>
           </Link>
           <Link
             href="/dashboard/vender"
@@ -73,9 +73,9 @@ export default async function DashboardHome({ searchParams }: PageProps<"/dashbo
         </div>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { href: "/dashboard/inventario", label: "Inventario", icon: Package },
-            { href: "/dashboard/reportes", label: "Reportes", icon: ChartLine },
-          ].map(({ href, label, icon: Icon }) => (
+            { href: "/dashboard/productos", label: "Inventario", icon: Package, note: `${limits.products.used} productos` },
+            { href: "/dashboard/reportes", label: "Reportes", icon: ChartLine, note: "En desarrollo" },
+          ].map(({ href, label, icon: Icon, note }) => (
             <Link
               key={href}
               href={href}
@@ -86,7 +86,7 @@ export default async function DashboardHome({ searchParams }: PageProps<"/dashbo
               </span>
               <span className="min-w-0">
                 <span className="block font-bold">{label}</span>
-                <span className="block text-xs text-muted-foreground">En desarrollo</span>
+                <span className="block text-xs text-muted-foreground">{note}</span>
               </span>
             </Link>
           ))}

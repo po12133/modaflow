@@ -57,6 +57,18 @@ services:
       SWAGGER_PATH: ${SWAGGER_PATH:-docs}
       # Public web URL, used to build password-reset links.
       WEB_APP_URL: ${WEB_APP_URL:-https://staging.modaflow.amicornios.com}
+      # Claude API (garment recognition). Without a key, AI analysis is disabled.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5-5}
+      # S3-compatible storage for product photos (AWS S3, Cloudflare R2, MinIO...).
+      # Without bucket/credentials, photo upload is disabled. Use a different bucket than production.
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
     expose:
       - "3001"
     depends_on:

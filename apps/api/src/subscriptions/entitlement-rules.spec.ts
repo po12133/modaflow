@@ -125,10 +125,19 @@ describe('usageWindow', () => {
     expect(w).toEqual({ start: trial.startedAt, end: trial.currentPeriodEnd });
   });
 
-  it('MONTHLY uses the calendar month in Bolivia (UTC-4)', () => {
-    // 2026-12-01 02:00 UTC is still November 30 22:00 in La Paz.
-    const w = usageWindow('MONTHLY', trial, new Date('2026-12-01T02:00:00.000Z'));
-    expect(w.start.toISOString()).toBe('2026-11-01T04:00:00.000Z');
-    expect(w.end.toISOString()).toBe('2026-12-01T04:00:00.000Z');
+  it('MONTHLY cycles are anchored on the subscription start date', () => {
+    const sub = { status: 'ACTIVE' as const, startedAt: new Date('2026-11-15T10:00:00.000Z'), currentPeriodEnd: new Date('2027-11-15T10:00:00.000Z') };
+    const first = usageWindow('MONTHLY', sub, new Date('2026-12-15T09:59:00.000Z'));
+    expect(first).toEqual({ start: sub.startedAt, end: new Date('2026-12-15T10:00:00.000Z') });
+    const second = usageWindow('MONTHLY', sub, new Date('2026-12-15T10:00:00.000Z'));
+    expect(second.start.toISOString()).toBe('2026-12-15T10:00:00.000Z');
+    expect(second.end.toISOString()).toBe('2027-01-15T10:00:00.000Z');
+  });
+
+  it('MONTHLY clamps month-end start dates (Jan 31 -> Feb 28)', () => {
+    const sub = { status: 'ACTIVE' as const, startedAt: new Date('2027-01-31T12:00:00.000Z'), currentPeriodEnd: new Date('2028-01-31T12:00:00.000Z') };
+    const w = usageWindow('MONTHLY', sub, new Date('2027-03-01T00:00:00.000Z'));
+    expect(w.start.toISOString()).toBe('2027-02-28T12:00:00.000Z');
+    expect(w.end.toISOString()).toBe('2027-03-31T12:00:00.000Z');
   });
 });

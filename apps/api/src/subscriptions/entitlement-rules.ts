@@ -7,8 +7,6 @@ import type { CatalogAccess, SubscriptionStatus, UsagePeriod } from '../generate
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Business timezone: Bolivia (America/La_Paz) is UTC-4 all year, no DST. */
-export const BUSINESS_UTC_OFFSET_HOURS = -4;
 
 export type FeatureKey = 'inventoryAndSales' | 'advancedReports' | 'onlineCatalog' | 'advancedManagement';
 export type LimitKey = 'products' | 'aiAnalyses' | 'users' | 'branches';
@@ -92,16 +90,36 @@ export interface UsageWindow {
 
 /**
  * Metering window for usage-based limits:
- * - TOTAL: the whole subscription period (trial: 10 analyses in total).
- * - MONTHLY: the current calendar month in the business timezone.
+ * - TOTAL: the whole subscription period (trial: 10 analyses in total, never reset).
+ * - MONTHLY: monthly cycles anchored on the subscription start date (a plan
+ *   started on the 15th resets on the 15th of every month), so credits follow
+ *   the subscription period rather than the calendar month.
  */
 export function usageWindow(period: UsagePeriod, sub: SubscriptionState, now: Date): UsageWindow {
   if (period === 'TOTAL') {
     return { start: sub.startedAt, end: sub.currentPeriodEnd };
   }
-  const offsetMs = BUSINESS_UTC_OFFSET_HOURS * 60 * 60 * 1000;
-  const local = new Date(now.getTime() + offsetMs);
-  const startLocal = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1);
-  const endLocal = Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + 1, 1);
-  return { start: new Date(startLocal - offsetMs), end: new Date(endLocal - offsetMs) };
+  const start = sub.startedAt;
+  let cycles = (now.getUTCFullYear() - start.getUTCFullYear()) * 12 + (now.getUTCMonth() - start.getUTCMonth());
+  if (addMonths(start, cycles).getTime() > now.getTime()) cycles -= 1;
+  cycles = Math.max(0, cycles);
+  return { start: addMonths(start, cycles), end: addMonths(start, cycles + 1) };
+}
+
+/** Adds calendar months in UTC, clamping the day (Jan 31 + 1 month = Feb 28/29). */
+export function addMonths(date: Date, months: number): Date {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth() + months;
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(
+    Date.UTC(
+      y,
+      m,
+      Math.min(date.getUTCDate(), lastDay),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds(),
+    ),
+  );
 }

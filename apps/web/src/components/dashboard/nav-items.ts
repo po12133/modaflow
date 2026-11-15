@@ -6,12 +6,14 @@ export interface NavItem {
   icon: LucideIcon;
   /** Feature not built yet: shows an "En desarrollo" tag. */
   soon?: boolean;
+  /** Other route prefixes that belong to this section. */
+  also?: string[];
 }
 
 /** Main sections, shared by the desktop sidebar and the mobile bottom bar. */
 export const MAIN_NAV: NavItem[] = [
   { href: "/dashboard", label: "Inicio", icon: House },
-  { href: "/dashboard/inventario", label: "Inventario", icon: Package, soon: true },
+  { href: "/dashboard/productos", label: "Inventario", icon: Package, also: ["/dashboard/inventario"] },
   { href: "/dashboard/vender", label: "Vender", icon: ShoppingCart, soon: true },
   { href: "/dashboard/reportes", label: "Reportes", icon: ChartLine, soon: true },
 ];
@@ -26,4 +28,8 @@ export const MORE_ITEM: NavItem = { href: "/dashboard/mas", label: "Más", icon:
 
 export function isActive(pathname: string, href: string): boolean {
   return href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function itemActive(pathname: string, item: NavItem): boolean {
+  return isActive(pathname, item.href) || (item.also ?? []).some((p) => isActive(pathname, p));
 }

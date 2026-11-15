@@ -31,6 +31,34 @@ services:
     networks:
       - modaflow
 
+  # S3-compatible object storage for product photos (development only).
+  # Production uses an external S3 provider (AWS S3, Cloudflare R2...).
+  storage:
+    image: chrislusf/seaweedfs:4.53
+    restart: unless-stopped
+    environment:
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-modaflow-dev}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-modaflow-dev-secret}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        printf '{"identities":[{"name":"modaflow","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","List","Tagging","Write"]}]}'
+        "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY" > /tmp/s3.json &&
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json -master.volumeSizeLimitMB=256 -volume.max=100
+    ports:
+      # Bound to localhost: the browser opens signed photo URLs on this port.
+      - "127.0.0.1:${S3_HOST_PORT:-8333}:8333"
+    volumes:
+      - storage_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - modaflow
+
   api:
     build:
       context: ../..
@@ -47,6 +75,19 @@ services:
       SWAGGER_PATH: ${SWAGGER_PATH:-docs}
       # Used to build password-reset links.
       WEB_APP_URL: ${WEB_APP_URL:-http://localhost:3000}
+      # Claude API (garment recognition). Without a key the AI button is disabled.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5-5}
+      # S3-compatible storage: the local `storage` service (SeaweedFS) in development.
+      S3_ENDPOINT: http://storage:8333
+      # Signed URLs are opened by the browser, so they must use the host port.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:8333}
+      S3_REGION: us-east-1
+      S3_BUCKET: ${S3_BUCKET:-modaflow-dev}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-modaflow-dev}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-modaflow-dev-secret}
+      S3_FORCE_PATH_STYLE: "true"
+      S3_AUTO_CREATE_BUCKET: "true"
       # Polling watchers: Docker Desktop bind mounts do not forward file events.
       TSC_WATCHFILE: DynamicPriorityPolling
       TSC_WATCHDIRECTORY: DynamicPriorityPolling
@@ -58,6 +99,8 @@ services:
       - ../../apps/api/test:/app/apps/api/test
     depends_on:
       postgres:
+        condition: service_healthy
+      storage:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -98,3 +141,4 @@ networks:
 
 volumes:
   postgres_data:
+  storage_data:

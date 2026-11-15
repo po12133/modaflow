@@ -47,3 +47,16 @@ export const ROLE_LABELS = {
   ADMIN: "Administrador",
   SELLER: "Vendedor",
 } as const;
+
+/** "M · Rojo", "Talla única". */
+export function variantLabel(v: { size: string | null; color: string | null }): string {
+  return [v.size || "Talla única", v.color].filter(Boolean).join(" · ");
+}
+
+const moneyFmt = new Intl.NumberFormat("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Decimal string from the API ("40.50") -> "Bs 40,50"; whole amounts -> "Bs 85". */
+export function formatMoney(value: string | number): string {
+  const n = typeof value === "number" ? value : Number(value);
+  return `Bs ${Number.isInteger(n) ? formatNumber(n) : moneyFmt.format(n)}`;
+}

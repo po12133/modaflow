@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ACCOUNT_NAV, isActive, MAIN_NAV, MORE_ITEM } from "./nav-items";
+import { ACCOUNT_NAV, isActive, itemActive, MAIN_NAV, MORE_ITEM } from "./nav-items";
 
 /** Mobile tab bar: Inicio · Inventario · [Vender] · Reportes · Más (as in the prototype). */
 export function BottomNav() {
@@ -19,7 +19,7 @@ export function BottomNav() {
     >
       <ul className="mx-auto grid h-16 max-w-lg grid-cols-5 items-end px-1">
         {items.map((item) => {
-          const active = item === MORE_ITEM ? moreActive : isActive(pathname, item.href);
+          const active = item === MORE_ITEM ? moreActive : itemActive(pathname, item);
           const Icon = item.icon;
           const isMain = item === sell;
           return (

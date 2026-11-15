@@ -24,7 +24,25 @@ export type AppErrorCode =
   | 'SUBSCRIPTION_NOT_FOUND'
   | 'SUBSCRIPTION_INACTIVE'
   | 'FEATURE_NOT_IN_PLAN'
-  | 'PLAN_LIMIT_REACHED';
+  | 'PLAN_LIMIT_REACHED'
+  // Stage 2: catalog, inventory, photos and AI
+  | 'STORAGE_NOT_CONFIGURED'
+  | 'STORAGE_ERROR'
+  | 'INVALID_IMAGE'
+  | 'IMAGE_NOT_FOUND'
+  | 'TOO_MANY_IMAGES'
+  | 'CATEGORY_EXISTS'
+  | 'CATEGORY_NOT_FOUND'
+  | 'PRODUCT_NOT_FOUND'
+  | 'PRODUCT_ARCHIVED'
+  | 'VARIANT_NOT_FOUND'
+  | 'DUPLICATE_VARIANT'
+  | 'SKU_TAKEN'
+  | 'INSUFFICIENT_STOCK'
+  | 'AI_NOT_CONFIGURED'
+  | 'AI_UNAVAILABLE'
+  | 'AI_INVALID_RESPONSE'
+  | 'ANALYSIS_IN_PROGRESS';
 
 export class AppError extends HttpException {
   constructor(

@@ -87,13 +87,15 @@ export class EntitlementsService {
     }
 
     const window = usageWindow(sub.plan.aiAnalysesPeriod, sub, now);
-    const [aiUsage, users, branches] = await Promise.all([
+    const [aiUsage, users, branches, products] = await Promise.all([
       this.prisma.subscriptionUsage.findUnique({
         where: { tenantId_metric_periodStart: { tenantId, metric: 'AI_ANALYSES', periodStart: window.start } },
         select: { used: true },
       }),
       this.prisma.tenantMembership.count({ where: { tenantId } }),
       this.prisma.store.count({ where: { tenantId } }),
+      // Rule: only ACTIVE products count; variants and archived products do not.
+      this.prisma.product.count({ where: { tenantId, status: 'ACTIVE' } }),
     ]);
     const operational = isOperational(status);
 
@@ -113,8 +115,7 @@ export class EntitlementsService {
       daysRemaining: operational ? daysRemaining(sub.currentPeriodEnd, now) : 0,
       dataRetentionUntil: operational ? null : retentionUntil(sub.currentPeriodEnd, DATA_RETENTION_DAYS),
       limits: {
-        // The product module does not exist yet: there are no products to count.
-        products: { limit: sub.plan.maxProducts, used: 0 },
+        products: { limit: sub.plan.maxProducts, used: products },
         aiAnalyses: {
           limit: sub.plan.aiAnalysesLimit,
           used: aiUsage?.used ?? 0,
@@ -176,12 +177,13 @@ export class EntitlementsService {
   }
 
   /**
-   * Atomically records one AI analysis if the plan allows it (for the future
-   * AI module). The conditional UPDATE prevents concurrent requests from
-   * exceeding the limit.
+   * Reserves one AI analysis credit for the current usage window. The
+   * conditional UPDATE (used < limit) is atomic, so concurrent requests can
+   * never exceed the plan limit. Returns the window the credit belongs to, so
+   * refundAiCredit can return it if the analysis fails.
    */
-  async consumeAiAnalysis(tenantId: string): Promise<void> {
-    const ent = await this.assertWithinLimit(tenantId, 'aiAnalyses');
+  async reserveAiCredit(tenantId: string): Promise<{ periodStart: Date; limit: number; used: number }> {
+    const ent = await this.assertOperational(tenantId);
     const { limit, periodStart, periodEnd } = ent.limits.aiAnalyses;
     await this.prisma.subscriptionUsage.upsert({
       where: { tenantId_metric_periodStart: { tenantId, metric: 'AI_ANALYSES', periodStart } },
@@ -196,9 +198,22 @@ export class EntitlementsService {
       throw new AppError(
         HttpStatus.FORBIDDEN,
         'PLAN_LIMIT_REACHED',
-        `Alcanzaste el límite de ${limit} análisis con IA de tu plan ${ent.plan.name}.`,
+        `Usaste los ${limit} análisis con IA de tu plan ${ent.plan.name}. Puedes registrar la prenda manualmente.`,
         { limit: 'aiAnalyses', max: limit },
       );
     }
+    const row = await this.prisma.subscriptionUsage.findUniqueOrThrow({
+      where: { tenantId_metric_periodStart: { tenantId, metric: 'AI_ANALYSES', periodStart } },
+      select: { used: true },
+    });
+    return { periodStart, limit, used: row.used };
+  }
+
+  /** Returns a reserved credit (failed analysis). Never drops below zero. */
+  async refundAiCredit(tenantId: string, periodStart: Date): Promise<void> {
+    await this.prisma.subscriptionUsage.updateMany({
+      where: { tenantId, metric: 'AI_ANALYSES', periodStart, used: { gt: 0 } },
+      data: { used: { decrement: 1 } },
+    });
   }
 }

@@ -109,3 +109,153 @@ export interface FormState {
   fieldErrors?: Record<string, string[] | undefined>;
   values?: Record<string, string>;
 }
+
+// ---------------------------------------------------------------------------
+// Stage 2: catalog, inventory, photos and AI
+// ---------------------------------------------------------------------------
+
+export type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
+export type MovementType = "INITIAL" | "STOCK_IN" | "MANUAL_OUT" | "ADJUSTMENT_IN" | "ADJUSTMENT_OUT";
+
+export interface Category {
+  id: string;
+  name: string;
+  sortOrder: number;
+  productCount: number;
+}
+
+export interface ProductImage {
+  id: string;
+  url: string | null;
+  thumbUrl: string | null;
+  width: number;
+  height: number;
+  position: number;
+  isPrimary: boolean;
+}
+
+export interface Variant {
+  id: string;
+  sku: string;
+  size: string | null;
+  color: string | null;
+  stock: number;
+}
+
+export interface ProductListItem {
+  id: string;
+  sku: string;
+  name: string;
+  color: string | null;
+  garmentType: string | null;
+  category: { id: string; name: string } | null;
+  salePrice: string;
+  totalStock: number;
+  lowStockThreshold: number;
+  stockStatus: StockStatus;
+  status: "ACTIVE" | "ARCHIVED";
+  sizes: string[];
+  variantCount: number;
+  image: ProductImage | null;
+  createdAt: string;
+}
+
+export interface ProductDetail {
+  id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  garmentType: string | null;
+  color: string | null;
+  secondaryColors: string[];
+  style: string | null;
+  category: { id: string; name: string } | null;
+  tags: string[];
+  salePrice: string;
+  purchasePrice: string | null;
+  lowStockThreshold: number;
+  totalStock: number;
+  stockStatus: StockStatus;
+  status: "ACTIVE" | "ARCHIVED";
+  variants: Variant[];
+  images: ProductImage[];
+  aiAssisted: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface InventoryItem {
+  id: string;
+  sku: string;
+  name: string;
+  category: string | null;
+  totalStock: number;
+  lowStockThreshold: number;
+  stockStatus: StockStatus;
+  variants: Variant[];
+}
+
+export interface InventoryResponse extends Paginated<InventoryItem> {
+  summary: { products: number; units: number; lowStock: number; outOfStock: number };
+}
+
+export interface Movement {
+  id: string;
+  type: MovementType;
+  quantity: number;
+  stockBefore: number;
+  stockAfter: number;
+  reason: string | null;
+  reference: string | null;
+  product: { id: string; name: string; sku: string };
+  variant: { id: string; sku: string; size: string | null; color: string | null };
+  user: string;
+  createdAt: string;
+}
+
+export interface AiUsage {
+  available: boolean;
+  aiConfigured: boolean;
+  storageConfigured: boolean;
+  isOperational: boolean;
+  limit: number;
+  used: number;
+  remaining: number;
+  period: UsagePeriod;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface GarmentSuggestion {
+  isGarment: boolean;
+  name: string;
+  description: string;
+  garmentType: string;
+  category: { id: string; name: string } | null;
+  suggestedCategory: string | null;
+  color: string;
+  secondaryColors: string[];
+  size: string | null;
+  style: string;
+  features: string[];
+  tags: string[];
+  message: string;
+}
+
+export interface AiAnalysis {
+  id: string;
+  status: "PENDING" | "SUCCEEDED" | "FAILED";
+  suggestion: GarmentSuggestion | null;
+  creditsCharged: number;
+  usage: { limit: number; used: number; remaining: number };
+}

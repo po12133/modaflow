@@ -36,6 +36,10 @@ model User {
   passwordResetTokens PasswordResetToken[]
   trialGrant          TrialGrant?
   planChangeRequests  PlanChangeRequest[]
+  productsCreated     Product[]
+  inventoryMovements  InventoryMovement[]
+  productImages       ProductImage[]
+  aiAnalyses          AiAnalysis[]
 
   @@map("users")
 }
@@ -43,16 +47,16 @@ model User {
 /// Server-side session. The cookie holds a random token; only its SHA-256
 /// hash is stored, so a database leak does not expose usable sessions.
 model Session {
-  id             String    @id @default(uuid()) @db.Uuid
-  userId         String    @map("user_id") @db.Uuid
-  tokenHash      String    @unique @map("token_hash") @db.Char(64)
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  tokenHash      String   @unique @map("token_hash") @db.Char(64)
   /// Tenant currently selected in this session (validated against memberships).
-  activeTenantId String?   @map("active_tenant_id") @db.Uuid
-  ipAddress      String?   @map("ip_address") @db.VarChar(64)
-  userAgent      String?   @map("user_agent") @db.VarChar(512)
-  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
-  lastUsedAt     DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  activeTenantId String?  @map("active_tenant_id") @db.Uuid
+  ipAddress      String?  @map("ip_address") @db.VarChar(64)
+  userAgent      String?  @map("user_agent") @db.VarChar(512)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+  lastUsedAt     DateTime @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeTenant Tenant? @relation(fields: [activeTenantId], references: [id], onDelete: SetNull)
@@ -88,10 +92,12 @@ enum MembershipRole {
 
 /// A business (company) using ModaFlow. Owns stores, subscription and data.
 model Tenant {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(120)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(120)
+  /// Last product number used to generate SKUs (P00001...). Incremented atomically.
+  productSeq Int      @default(0) @map("product_seq")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   memberships        TenantMembership[]
   stores             Store[]
@@ -100,6 +106,13 @@ model Tenant {
   trialGrant         TrialGrant?
   planChangeRequests PlanChangeRequest[]
   sessions           Session[]
+  categories         Category[]
+  tags               Tag[]
+  products           Product[]
+  productVariants    ProductVariant[]
+  productImages      ProductImage[]
+  inventoryMovements InventoryMovement[]
+  aiAnalyses         AiAnalysis[]
 
   @@map("tenants")
 }
@@ -137,7 +150,8 @@ model Store {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
 
   @@index([tenantId])
   @@map("stores")
@@ -167,27 +181,27 @@ enum CatalogAccess {
 }
 
 model Plan {
-  id                 String        @id @default(uuid()) @db.Uuid
+  id            String        @id @default(uuid()) @db.Uuid
   /// Stable identifier used by code and seed: gratis | basico | pro | premium.
-  code               String        @unique @db.VarChar(32)
-  name               String        @db.VarChar(60)
-  tagline            String        @db.VarChar(200)
+  code          String        @unique @db.VarChar(32)
+  name          String        @db.VarChar(60)
+  tagline       String        @db.VarChar(200)
   /// Price in centavos of boliviano (Bs 30 => 3000).
-  priceCents         Int           @map("price_cents")
-  currency           String        @default("BOB") @db.Char(3)
-  billingPeriod      BillingPeriod @map("billing_period")
+  priceCents    Int           @map("price_cents")
+  currency      String        @default("BOB") @db.Char(3)
+  billingPeriod BillingPeriod @map("billing_period")
   /// Fixed duration for trial plans (14). Null for recurring plans.
-  durationDays       Int?          @map("duration_days")
-  isTrial            Boolean       @default(false) @map("is_trial")
-  isRecommended      Boolean       @default(false) @map("is_recommended")
-  isActive           Boolean       @default(true) @map("is_active")
-  sortOrder          Int           @map("sort_order")
+  durationDays  Int?          @map("duration_days")
+  isTrial       Boolean       @default(false) @map("is_trial")
+  isRecommended Boolean       @default(false) @map("is_recommended")
+  isActive      Boolean       @default(true) @map("is_active")
+  sortOrder     Int           @map("sort_order")
 
-  maxProducts        Int           @map("max_products")
-  aiAnalysesLimit    Int           @map("ai_analyses_limit")
-  aiAnalysesPeriod   UsagePeriod   @map("ai_analyses_period")
-  maxUsers           Int           @map("max_users")
-  maxBranches        Int           @map("max_branches")
+  maxProducts      Int         @map("max_products")
+  aiAnalysesLimit  Int         @map("ai_analyses_limit")
+  aiAnalysesPeriod UsagePeriod @map("ai_analyses_period")
+  maxUsers         Int         @map("max_users")
+  maxBranches      Int         @map("max_branches")
 
   inventoryAndSales  Boolean       @map("inventory_and_sales")
   advancedReports    Boolean       @map("advanced_reports")
@@ -195,14 +209,14 @@ model Plan {
   advancedManagement Boolean       @map("advanced_management")
 
   /// Marketing bullet points shown in plan cards.
-  highlights         String[]
+  highlights String[]
 
-  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  subscriptions        Subscription[]
-  changeRequestsFrom   PlanChangeRequest[] @relation("ChangeFromPlan")
-  changeRequestsTo     PlanChangeRequest[] @relation("ChangeToPlan")
+  subscriptions      Subscription[]
+  changeRequestsFrom PlanChangeRequest[] @relation("ChangeFromPlan")
+  changeRequestsTo   PlanChangeRequest[] @relation("ChangeToPlan")
 
   @@map("plans")
 }
@@ -218,15 +232,15 @@ enum SubscriptionStatus {
 /// also derived from `currentPeriodEnd`, so an elapsed trial counts as expired
 /// even before a job updates `status`.
 model Subscription {
-  id                String             @id @default(uuid()) @db.Uuid
-  tenantId          String             @unique @map("tenant_id") @db.Uuid
-  planId            String             @map("plan_id") @db.Uuid
-  status            SubscriptionStatus
-  startedAt         DateTime           @map("started_at") @db.Timestamptz(3)
-  currentPeriodEnd  DateTime           @map("current_period_end") @db.Timestamptz(3)
-  canceledAt        DateTime?          @map("canceled_at") @db.Timestamptz(3)
-  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id               String             @id @default(uuid()) @db.Uuid
+  tenantId         String             @unique @map("tenant_id") @db.Uuid
+  planId           String             @map("plan_id") @db.Uuid
+  status           SubscriptionStatus
+  startedAt        DateTime           @map("started_at") @db.Timestamptz(3)
+  currentPeriodEnd DateTime           @map("current_period_end") @db.Timestamptz(3)
+  canceledAt       DateTime?          @map("canceled_at") @db.Timestamptz(3)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   plan   Plan   @relation(fields: [planId], references: [id], onDelete: Restrict)
@@ -300,4 +314,242 @@ model PlanChangeRequest {
 
   @@index([tenantId, status])
   @@map("plan_change_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog: categories, tags, products, variants and images (Stage 2)
+// ---------------------------------------------------------------------------
+
+/// Per-tenant category. normalizedName (lowercase, no accents, single spaces)
+/// prevents duplicates such as "Blusas" and " blusas ".
+model Category {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  name           String   @db.VarChar(60)
+  normalizedName String   @map("normalized_name") @db.VarChar(60)
+  sortOrder      Int      @default(100) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, normalizedName])
+  @@map("categories")
+}
+
+model Tag {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  name           String   @db.VarChar(40)
+  normalizedName String   @map("normalized_name") @db.VarChar(40)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products ProductTag[]
+
+  @@unique([tenantId, normalizedName])
+  @@index([normalizedName(ops: raw("gin_trgm_ops"))], type: Gin, map: "tags_normalized_name_trgm")
+  @@map("tags")
+}
+
+model ProductTag {
+  productId String @map("product_id") @db.Uuid
+  tagId     String @map("tag_id") @db.Uuid
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([tagId])
+  @@map("product_tags")
+}
+
+enum ProductStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+/// A garment model. Stock lives in its variants (size/color); totalStock is
+/// a denormalized sum maintained in the same transaction as every movement.
+/// Only ACTIVE products count towards the plan product limit.
+model Product {
+  id                String        @id @default(uuid()) @db.Uuid
+  tenantId          String        @map("tenant_id") @db.Uuid
+  storeId           String        @map("store_id") @db.Uuid
+  categoryId        String?       @map("category_id") @db.Uuid
+  createdById       String        @map("created_by_id") @db.Uuid
+  /// AI analysis whose suggestions were used to fill the form, if any.
+  aiAnalysisId      String?       @unique @map("ai_analysis_id") @db.Uuid
+  sku               String        @db.VarChar(40)
+  name              String        @db.VarChar(120)
+  description       String?       @db.VarChar(500)
+  garmentType       String?       @map("garment_type") @db.VarChar(60)
+  color             String?       @db.VarChar(40)
+  secondaryColors   String[]      @map("secondary_colors")
+  style             String?       @db.VarChar(60)
+  salePrice         Decimal       @map("sale_price") @db.Decimal(12, 2)
+  purchasePrice     Decimal?      @map("purchase_price") @db.Decimal(12, 2)
+  /// Stock at or below this (and above 0) is low. 0 disables the alert.
+  lowStockThreshold Int           @default(2) @map("low_stock_threshold")
+  totalStock        Int           @default(0) @map("total_stock")
+  status            ProductStatus @default(ACTIVE)
+  archivedAt        DateTime?     @map("archived_at") @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store      Store               @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  category   Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdBy  User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  aiAnalysis AiAnalysis?         @relation(fields: [aiAnalysisId], references: [id], onDelete: SetNull)
+  variants   ProductVariant[]
+  images     ProductImage[]
+  tags       ProductTag[]
+  movements  InventoryMovement[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, status, salePrice])
+  @@index([tenantId, categoryId])
+  @@index([storeId])
+  /// Trigram indexes for case-insensitive contains search (pg_trgm, see migration).
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_name_trgm")
+  @@index([sku(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_sku_trgm")
+  @@map("products")
+}
+
+/// Sellable unit of a product (e.g. Roja / M) with its own stock.
+/// A one-off garment (ropa de fardo) is a single variant without size/color.
+model ProductVariant {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  sku       String   @db.VarChar(48)
+  size      String?  @db.VarChar(20)
+  color     String?  @db.VarChar(40)
+  /// Only changed together with an InventoryMovement row, never directly.
+  stock     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  movements InventoryMovement[]
+
+  @@unique([tenantId, sku])
+  @@index([productId])
+  @@index([tenantId, stock])
+  @@index([sku(ops: raw("gin_trgm_ops"))], type: Gin, map: "product_variants_sku_trgm")
+  @@map("product_variants")
+}
+
+/// Photo stored in S3-compatible storage; only the object key lives here.
+/// productId is null while the photo is uploaded but the product not saved yet.
+model ProductImage {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  productId    String?  @map("product_id") @db.Uuid
+  uploadedById String   @map("uploaded_by_id") @db.Uuid
+  /// Object key prefix: tenants/TENANT/images/IMAGE (main.webp and thumb.webp)
+  storageKey   String   @unique @map("storage_key") @db.VarChar(300)
+  contentType  String   @map("content_type") @db.VarChar(40)
+  sizeBytes    Int      @map("size_bytes")
+  width        Int
+  height       Int
+  position     Int      @default(0)
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product    Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, productId])
+  @@index([productId, position])
+  @@map("product_images")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory movements (Stage 2)
+// ---------------------------------------------------------------------------
+
+enum InventoryMovementType {
+  INITIAL
+  STOCK_IN
+  MANUAL_OUT
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+}
+
+/// Append-only stock ledger. stock_after = stock_before +/- quantity is enforced
+/// by a CHECK constraint, and stock never goes below zero.
+model InventoryMovement {
+  id             String                @id @default(uuid()) @db.Uuid
+  tenantId       String                @map("tenant_id") @db.Uuid
+  productId      String                @map("product_id") @db.Uuid
+  variantId      String                @map("variant_id") @db.Uuid
+  userId         String                @map("user_id") @db.Uuid
+  type           InventoryMovementType
+  quantity       Int
+  stockBefore    Int                   @map("stock_before")
+  stockAfter     Int                   @map("stock_after")
+  reason         String?               @db.VarChar(200)
+  reference      String?               @db.VarChar(80)
+  /// Client-generated key so a retried request does not record the movement twice.
+  idempotencyKey String?               @map("idempotency_key") @db.VarChar(64)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, createdAt])
+  @@index([variantId, createdAt])
+  @@index([productId, createdAt])
+  @@map("inventory_movements")
+}
+
+// ---------------------------------------------------------------------------
+// AI garment analysis (Stage 2)
+// ---------------------------------------------------------------------------
+
+enum AiAnalysisStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+/// One garment analysis request. A credit is reserved when the analysis
+/// starts (PENDING) and refunded if it fails, so concurrent requests can never
+/// exceed the plan limit and failed calls cost nothing.
+model AiAnalysis {
+  id               String           @id @default(uuid()) @db.Uuid
+  tenantId         String           @map("tenant_id") @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  idempotencyKey   String           @map("idempotency_key") @db.VarChar(64)
+  status           AiAnalysisStatus @default(PENDING)
+  imageIds         String[]         @map("image_ids")
+  model            String?          @db.VarChar(64)
+  /// 1 while the credit is held or consumed; 0 after a refund.
+  creditsCharged   Int              @default(0) @map("credits_charged")
+  /// Usage window the credit belongs to (SubscriptionUsage.periodStart).
+  usagePeriodStart DateTime         @map("usage_period_start") @db.Timestamptz(3)
+  inputTokens      Int?             @map("input_tokens")
+  outputTokens     Int?             @map("output_tokens")
+  result           Json?
+  errorCode        String?          @map("error_code") @db.VarChar(60)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt      DateTime?        @map("completed_at") @db.Timestamptz(3)
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  product Product?
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, createdAt])
+  @@index([status, createdAt])
+  @@map("ai_analyses")
 }

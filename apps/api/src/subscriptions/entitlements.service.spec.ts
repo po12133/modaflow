@@ -5,7 +5,7 @@ import { EntitlementsService } from './entitlements.service.js';
 
 const start = new Date('2026-11-01T12:00:00.000Z');
 
-function makeService(planCode: string, opts: { end?: Date; aiUsed?: number; status?: string } = {}) {
+function makeService(planCode: string, opts: { end?: Date; aiUsed?: number; status?: string; products?: number } = {}) {
   const plan = { id: `plan-${planCode}`, currency: 'BOB', ...PLAN_CATALOG.find((p) => p.code === planCode)! };
   const sub = {
     id: 'sub-1',
@@ -20,6 +20,7 @@ function makeService(planCode: string, opts: { end?: Date; aiUsed?: number; stat
     subscriptionUsage: { findUnique: vi.fn().mockResolvedValue(opts.aiUsed == null ? null : { used: opts.aiUsed }) },
     tenantMembership: { count: vi.fn().mockResolvedValue(1) },
     store: { count: vi.fn().mockResolvedValue(1) },
+    product: { count: vi.fn().mockResolvedValue(opts.products ?? 0) },
   };
   return { service: new EntitlementsService(prisma as unknown as PrismaService), prisma };
 }
@@ -73,6 +74,16 @@ describe('EntitlementsService', () => {
     });
     const ok = makeService('gratis', { end: addDays(new Date(), 5), aiUsed: 9 });
     await expect(ok.service.assertWithinLimit('t1', 'aiAnalyses')).resolves.toBeDefined();
+  });
+
+  it('enforces the product limit with the real count of active products', async () => {
+    const full = makeService('gratis', { end: addDays(new Date(), 5), products: 30 });
+    await expect(full.service.assertWithinLimit('t1', 'products')).rejects.toMatchObject({
+      response: { code: 'PLAN_LIMIT_REACHED', limit: 'products', max: 30, used: 30 },
+    });
+    expect(full.prisma.product.count).toHaveBeenCalledWith({ where: { tenantId: 't1', status: 'ACTIVE' } });
+    const room = makeService('gratis', { end: addDays(new Date(), 5), products: 29 });
+    await expect(room.service.assertWithinLimit('t1', 'products')).resolves.toBeDefined();
   });
 
   it('enforces user limits per plan', async () => {

@@ -99,9 +99,64 @@ La API valida sus variables al arrancar ([env.validation.ts](apps/api/src/config
 **Endpoints** (ver Swagger): `/auth/*`, `/users/me`, `/onboarding`, `/stores/current`, `/plans`, `/subscription`,
 `/subscription/change-requests`, `/health`.
 
+## Arquitectura (Etapa 2: registro de prendas con IA e inventario)
+
+**Productos y variantes**
+- `Product` (modelo de prenda: precios en `Decimal(12,2)`, categoría, etiquetas, fotos) y `ProductVariant`
+  (talla/color con su propio **stock** y SKU). Una prenda única o de fardo es una sola variante sin talla.
+- SKU automático por tienda (`P00001`, variantes `P00001-M-ROJO`) y editable.
+- **Límite del plan**: cuentan solo los productos **activos**; cada producto cuenta una vez sin importar sus
+  variantes o unidades. Archivar libera el cupo y restaurar vuelve a comprobarlo. Las ediciones están permitidas
+  aunque se alcance el límite, siempre que la suscripción esté activa. La comprobación bloquea la fila de la
+  suscripción (`FOR UPDATE`), así que dos registros simultáneos no pueden superar el máximo.
+- Archivar es un borrado lógico (`DELETE /products/:id`): nunca se elimina un producto con historial.
+
+**Inventario**
+- El stock **solo** cambia con un `InventoryMovement` (entrada inicial, entrada de mercadería, salida manual,
+  ajuste positivo y ajuste negativo). Cada movimiento guarda el stock anterior y el posterior, el motivo, la
+  referencia, el usuario y la fecha.
+- Cada movimiento bloquea la variante y su producto (`SELECT … FOR UPDATE`) dentro de una transacción. Las
+  restricciones `CHECK` impiden el stock negativo y exigen `stock_after = stock_before ± cantidad`. Una clave de
+  idempotencia evita duplicar un movimiento al reintentar.
+- Los ajustes son solo para el propietario o el administrador; las entradas y salidas, para cualquier rol.
+
+**Fotos (S3)**
+- Se suben a `POST /product-images` (en el frontend pasan por `/api/product-images`, con la cookie de sesión).
+  El backend decodifica la imagen real con `sharp`, acepta solo JPEG, PNG y WebP (máx. 10 MB), corrige la
+  orientación, elimina los metadatos EXIF/GPS y guarda una versión WebP de 1600 px y una miniatura de 480 px.
+- Las claves de los objetos son `tenants/{tenant}/products/{producto}/{imagen}-main.webp` y `-thumb.webp`. En
+  PostgreSQL solo se guarda la referencia. El bucket es **privado**: el navegador recibe URLs firmadas de 1 hora.
+- Las fotos subidas que nunca se guardan con un producto se eliminan a las 24 h.
+
+**IA (Claude)**
+- `POST /ai/analyze-garment` (1 a 4 fotos) envía las fotos optimizadas a Claude, con salida estructurada validada
+  con zod. El esquema **no tiene campos** de precio, cantidad, marca ni composición, y la talla solo se informa si
+  se lee en una etiqueta. Las sugerencias se sanean y quedan editables. La clave nunca sale del backend.
+- Modelo configurable con `ANTHROPIC_MODEL` (por defecto `claude-opus-5-5`, esfuerzo `low`). Usa el *fallback*
+  de servidor ante rechazos de seguridad cuando el modelo lo admite.
+- **Créditos**: un análisis es 1 crédito, aunque incluya varias fotos. El crédito se reserva de forma atómica
+  (`used < límite`), así que las solicitudes simultáneas nunca superan el plan. Si el análisis falla se devuelve
+  el crédito, y un reintento con la misma clave devuelve el resultado guardado sin cobrar de nuevo. Los créditos
+  mensuales se reinician cada mes contado desde el inicio de la suscripción; los de la prueba (10) no se reinician.
+  Cada análisis queda registrado en `ai_analyses` con su estado y sus tokens.
+- Sin `ANTHROPIC_API_KEY` el botón de IA se deshabilita con un aviso y la prenda se registra manualmente.
+
+**Endpoints**: `/products`, `/products/:id`, `/products/:id/restore`, `/categories`, `/tags`, `/inventory`,
+`/inventory/movements`, `/inventory/entries`, `/inventory/exits`, `/inventory/adjustments`, `/product-images`,
+`/ai/analyze-garment`, `/ai/usage`.
+
 **Frontend**: `/`, `/registro`, `/login`, `/recuperar-contrasena`, `/restablecer-contrasena`, `/onboarding`,
-`/dashboard` (+ `suscripcion`, `configuracion`, `cuenta`, `mas`; `inventario`, `vender` y `reportes` aparecen como
-"En desarrollo"). Mobile first: en el celular hay barra inferior y en escritorio una barra lateral.
+`/dashboard` (+ `productos`, `productos/nuevo`, `productos/[id]`, `productos/[id]/editar`, `productos/categorias`,
+`inventario`, `inventario/movimientos`, `suscripcion`, `configuracion`, `cuenta`, `mas`; `vender` y `reportes`
+aparecen como "En desarrollo"). Mobile first: en el celular hay barra inferior y en escritorio una barra lateral.
+
+### Costo estimado de la IA
+
+Un análisis con 1 a 3 fotos usa del orden de 3.000 a 6.000 tokens de entrada y unos cientos de salida. Con
+`claude-opus-5-5` ($4 / $20 por millón de tokens) son aproximadamente USD 0,02-0,04 por análisis, unos
+**Bs 0,15-0,30**: 300 análisis del plan Premium costarían unos USD 6-12 al mes. Es una estimación y conviene
+medirla con los tokens registrados en `ai_analyses`. Para reducir el costo se puede probar
+`ANTHROPIC_MODEL=claude-haiku-5-5` (mucho más económico), comparando antes la calidad con fotos reales.
 
 ## Desarrollo con Docker (recomendado)
 
@@ -140,6 +195,10 @@ Atajos equivalentes: `npm run docker:dev`, `npm run docker:dev:down`, `npm run d
 | Health check | http://localhost:3001/health |
 | Swagger UI | http://localhost:3001/docs (JSON: `/docs-json`) |
 | PostgreSQL | `localhost:5432` (solo en `127.0.0.1`), usuario/contraseña de `.env`, base `modaflow` |
+| S3 local (SeaweedFS) | `http://localhost:8333` (solo en `127.0.0.1`), bucket `modaflow-dev`, claves `modaflow-dev` / `modaflow-dev-secret` |
+
+El compose de desarrollo incluye un servicio `storage` (SeaweedFS 4.53, compatible con S3) para probar las fotos
+de verdad sin un proveedor externo. Solo existe en desarrollo; en producción se usa un S3 externo.
 
 Conexión a PostgreSQL:
 
@@ -189,12 +248,25 @@ docker compose -f deploy/development/compose.yaml exec postgres sh -c 'createdb 
 cd apps/api
 export DATABASE_URL="postgresql://modaflow:<password>@localhost:5432/modaflow_test?schema=public"
 npx prisma migrate deploy && npx prisma db seed
-npm run test:e2e
+npm run test:e2e        # requiere también el servicio `storage` en localhost:8333 (bucket modaflow-test)
 ```
 
-Las pruebas e2e cubren: registro, login/logout, bloqueo por intentos, CSRF por origen, recuperación de contraseña,
-protección de rutas, onboarding transaccional, prueba de 14 días (y que no se reinicia), planes, días restantes,
-edición de la tienda, aislamiento entre tenants, solicitudes de cambio de plan y modo de solo lectura al vencer.
+Las pruebas e2e cubren:
+- **Etapa 1:** registro, login y logout, bloqueo por intentos, CSRF por origen, recuperación de contraseña,
+  protección de rutas, onboarding transaccional, prueba de 14 días (y que no se reinicia), planes, días restantes,
+  edición de la tienda, aislamiento entre tenants, solicitudes de cambio de plan y modo de solo lectura al vencer.
+- **Etapa 2:** subida de fotos a S3 (optimización, URLs firmadas, acceso sin firma denegado, rechazo de archivos
+  que no son imágenes), registro manual con variantes, prenda única, validaciones, edición, búsqueda y filtros,
+  entradas, salidas y ajustes, historial consistente, salidas simultáneas sin stock negativo, límite de productos
+  con solicitudes simultáneas, archivado y restauración, suscripción vencida, categorías sin duplicados,
+  aislamiento entre tiendas y créditos de IA (cobro, idempotencia, reembolso al fallar y límite con concurrencia).
+
+En las pruebas de créditos, el modelo de visión se reemplaza por un **doble de prueba**: se prueba la lógica real de
+créditos y no se simula a Claude. La llamada real a Claude tiene su propia prueba, que solo se ejecuta con clave:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... AI_TEST_IMAGE=/ruta/a/foto-de-prenda.jpg npm run test:e2e
+```
 
 Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
 
@@ -203,7 +275,12 @@ Componentes de shadcn/ui: `cd apps/web && npx shadcn@latest add <componente>`.
 - Configuración: [apps/api/prisma7.config.ts](apps/api/prisma7.config.ts) (nombre de archivo propio de Prisma 7.10) y
   [apps/api/prisma/schema.prisma](apps/api/prisma/schema.prisma).
 - Modelos: `User`, `Session`, `PasswordResetToken`, `Tenant`, `TenantMembership`, `Store`, `Plan`, `Subscription`,
-  `SubscriptionUsage`, `TrialGrant` y `PlanChangeRequest`, con claves foráneas, índices y restricciones `CHECK`.
+  `SubscriptionUsage`, `TrialGrant` y `PlanChangeRequest` (Etapa 1); `Category`, `Tag`, `ProductTag`, `Product`,
+  `ProductVariant`, `ProductImage`, `InventoryMovement` y `AiAnalysis` (Etapa 2). Todos con claves foráneas,
+  índices (incluidos índices trigram `pg_trgm` para la búsqueda) y restricciones `CHECK`.
+- Migraciones: `20261115015333_init_tenancy_and_subscriptions` y `20261115030329_catalog_inventory_ai`. La segunda
+  solo agrega tablas y una columna con valor por defecto (`tenants.product_seq`), sin cambios destructivos.
+- No se usa `prisma db push`: los cambios de esquema van siempre como migraciones versionadas.
 - Migraciones versionadas en `apps/api/prisma/migrations`. Al arrancar, el contenedor `api` (desarrollo y
   producción) ejecuta `prisma migrate deploy` (solo aplica migraciones pendientes, nunca borra datos) y el seed de planes.
 - Nueva migración en desarrollo: `npm run prisma:migrate:dev -w @modaflow/api -- --name <nombre>`.
@@ -267,6 +344,19 @@ docker compose -f deploy/production/compose.yaml --env-file .env down
    | `NEXT_PUBLIC_API_URL` | `https://api.modaflow.amicornios.com` (se usa como build arg de `web`) |
    | `CORS_ORIGINS` | `https://modaflow.amicornios.com` |
    | `SWAGGER_ENABLED` | `false` (o `true` si quieres Swagger público) |
+   | `ANTHROPIC_API_KEY` | clave de la API de Claude (secreta). Sin ella, la IA queda deshabilitada |
+   | `ANTHROPIC_MODEL` | `claude-opus-5-5` (o el modelo que elijas) |
+   | `S3_ENDPOINT` | endpoint del proveedor S3 (vacío = AWS S3) |
+   | `S3_REGION` | región (`auto` en Cloudflare R2) |
+   | `S3_BUCKET` | bucket **privado** de fotos |
+   | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | credenciales con permisos de lectura, escritura y borrado en el bucket (secretas) |
+   | `S3_FORCE_PATH_STYLE` | `true` para MinIO/SeaweedFS/R2; `false` es válido para AWS S3 |
+
+   **Almacenamiento S3 en producción** (elige uno y crea el bucket, que debe ser privado):
+   - **Cloudflare R2**: `S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`, `S3_REGION=auto`.
+   - **AWS S3**: deja `S3_ENDPOINT` vacío e indica la región del bucket.
+   - **Autoalojado en Coolify** (MinIO/SeaweedFS como servicio aparte): usa su URL pública con HTTPS como
+     `S3_ENDPOINT`. El navegador abre las URLs firmadas en ese mismo host, así que debe ser accesible desde internet.
 
    Si cambias `NEXT_PUBLIC_API_URL`, haz **redeploy** (el valor se incrusta al construir).
 6. DNS y certificados: se configuran después desde Coolify (registros A de ambos dominios hacia el servidor;
@@ -337,4 +427,10 @@ Variables de entorno de staging (distintas de producción, **otra contraseña**)
 | pg | 8.23.1 |
 | class-validator / class-transformer | 0.15.1 / 0.5.1 |
 | Vitest | 4.1.12 |
+| @anthropic-ai/sdk (Etapa 2) | 1.8.0 |
+| @aws-sdk/client-s3 + s3-request-presigner (Etapa 2) | 3.1169.0 |
+| sharp (Etapa 2) | 0.35.5 |
+| zod (web y api) | 4.6.7 |
+| @nestjs/throttler / @node-rs/argon2 (Etapa 1) | 6.7.1 / 2.2.2 |
+| SeaweedFS (S3 local, solo desarrollo) | 4.53 |
 | PostgreSQL | 18 (alpine) |

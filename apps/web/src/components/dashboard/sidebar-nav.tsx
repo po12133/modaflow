@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ACCOUNT_NAV, isActive, MAIN_NAV, type NavItem } from "./nav-items";
+import { ACCOUNT_NAV, itemActive, MAIN_NAV, type NavItem } from "./nav-items";
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const active = isActive(pathname, item.href);
+  const active = itemActive(pathname, item);
   const Icon = item.icon;
   return (
     <Link
