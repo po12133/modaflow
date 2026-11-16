@@ -1,4 +1,4 @@
-import type { IntegrationEnv, IntegrationRow, IntegrationSection } from '../../integrations/integration-config.js';
+import { AI_MODEL_OPTIONS, type IntegrationEnv, type IntegrationRow, type IntegrationSection, type ModelOption } from '../../integrations/integration-config.js';
 
 type RowKey = keyof IntegrationRow;
 type EnvKey = keyof IntegrationEnv;
@@ -10,7 +10,7 @@ export interface SecretField {
 }
 
 export interface SectionFields {
-  plain: Record<string, { column: RowKey; env: EnvKey }>;
+  plain: Record<string, { column: RowKey; env: EnvKey; options?: ModelOption[] }>;
   secrets: Record<string, SecretField>;
 }
 
@@ -21,7 +21,8 @@ export const SECTION_FIELDS: Record<IntegrationSection, SectionFields> = {
       s3PublicEndpoint: { column: 's3PublicEndpoint', env: 'S3_PUBLIC_ENDPOINT' },
       s3Region: { column: 's3Region', env: 'S3_REGION' },
       s3Bucket: { column: 's3Bucket', env: 'S3_BUCKET' },
-      s3ForcePathStyle: { column: 's3ForcePathStyle', env: 'S3_FORCE_PATH_STYLE' },
+      s3KeyPrefix: { column: 's3KeyPrefix', env: 'S3_KEY_PREFIX' },
+      s3PublicUrls: { column: 's3PublicUrls', env: 'S3_PUBLIC_URLS' },
     },
     secrets: {
       s3AccessKeyId: { enc: 's3AccessKeyIdEnc', hint: 's3AccessKeyIdHint', env: 'S3_ACCESS_KEY_ID' },
@@ -29,7 +30,7 @@ export const SECTION_FIELDS: Record<IntegrationSection, SectionFields> = {
     },
   },
   ai: {
-    plain: { anthropicModel: { column: 'anthropicModel', env: 'ANTHROPIC_MODEL' } },
+    plain: { anthropicModel: { column: 'anthropicModel', env: 'ANTHROPIC_MODEL', options: AI_MODEL_OPTIONS } },
     secrets: { anthropicApiKey: { enc: 'anthropicApiKeyEnc', hint: 'anthropicApiKeyHint', env: 'ANTHROPIC_API_KEY' } },
   },
   email: {
@@ -55,7 +56,7 @@ export function describeSection(section: IntegrationSection, row: IntegrationRow
       const value = (row?.[f.column] ?? null) as Plain;
       const envValue = (env[f.env] ?? null) as Plain;
       const source: FieldSource = value !== null ? 'panel' : envValue !== null && envValue !== '' ? 'env' : 'none';
-      return [name, { value, envValue, source }];
+      return [name, f.options ? { value, envValue, source, options: f.options } : { value, envValue, source }];
     }),
   );
   const secretFields = Object.fromEntries(

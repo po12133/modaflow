@@ -5,13 +5,14 @@ export const INTEGRATION_TABS: Record<string, IntegrationSection> = { almacenami
 export const INTEGRATION_SECTIONS: Record<IntegrationSection, SectionDef> = {
   storage: {
     title: "Almacenamiento de imágenes (S3)",
-    description: "Fotos de productos, logos, portadas, comprobantes de pago y el QR bancario. El bucket debe ser privado: los navegadores reciben enlaces firmados temporales.",
+    description: "Fotos de productos, logos, portadas, comprobantes de pago y el QR bancario. Bucket privado: enlaces firmados temporales. Bucket público: URLs cortas y directas.",
     fields: [
-      { name: "s3Endpoint", label: "Endpoint", kind: "text", help: "Vacío en AWS S3. Cloudflare R2: https://<cuenta>.r2.cloudflarestorage.com", placeholder: "https://..." },
-      { name: "s3PublicEndpoint", label: "Endpoint público (opcional)", kind: "text", help: "Solo si los navegadores deben abrir las fotos en otra URL." },
+      { name: "s3Endpoint", label: "Endpoint", kind: "text", help: "Sin el nombre del bucket. Hetzner: https://nbg1.your-objectstorage.com · Vacío en AWS S3.", placeholder: "https://..." },
+      { name: "s3PublicEndpoint", label: "Endpoint público (opcional)", kind: "text", help: "Normalmente vacío. Solo si los navegadores deben abrir las fotos en otro dominio." },
       { name: "s3Region", label: "Región", kind: "text", help: "auto en Cloudflare R2; us-east-1, sa-east-1… en AWS." },
       { name: "s3Bucket", label: "Bucket", kind: "text" },
-      { name: "s3ForcePathStyle", label: "Rutas estilo path", kind: "boolean", help: "Sí para MinIO, SeaweedFS y R2. AWS acepta ambos." },
+      { name: "s3PublicUrls", label: "Imágenes públicas", kind: "boolean", help: "Sí = el bucket es público: las imágenes usan URLs cortas y directas que el navegador guarda en caché. Los comprobantes de pago siguen con enlace firmado." },
+      { name: "s3KeyPrefix", label: "Carpeta dentro del bucket", kind: "text", placeholder: "modaflow", help: "Vacío = raíz del bucket. Si la cambias, los archivos ya subidos deben moverse a la nueva carpeta." },
     ],
     secrets: [
       { name: "s3AccessKeyId", label: "Access Key ID" },
@@ -21,7 +22,7 @@ export const INTEGRATION_SECTIONS: Record<IntegrationSection, SectionDef> = {
   ai: {
     title: "Inteligencia artificial (Claude)",
     description: "Reconocimiento de prendas en las fotos. Sin llave, las tiendas registran productos de forma manual.",
-    fields: [{ name: "anthropicModel", label: "Modelo", kind: "text", placeholder: "claude-opus-5-5", help: "Debe aceptar imágenes. La prueba confirma que existe para tu llave." }],
+    fields: [{ name: "anthropicModel", label: "Modelo", kind: "select", help: "Todos aceptan fotos. La prueba confirma que el modelo está disponible para tu llave." }],
     secrets: [{ name: "anthropicApiKey", label: "Llave de la API", help: "Se crea en console.anthropic.com. Cada análisis consume créditos de esa cuenta." }],
   },
   email: {

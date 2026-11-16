@@ -3,7 +3,7 @@ import { formatDateTime } from "@modaflow/ui/lib/format";
 import type { IntegrationSection, IntegrationsView } from "@/types/integrations";
 import { IntegrationForm } from "./integration-form";
 
-export function IntegrationsPanel({ section, view, canEdit }: { section: IntegrationSection; view: IntegrationsView; canEdit: boolean }) {
+export function IntegrationsPanel({ section, view, canEdit, account }: { section: IntegrationSection; view: IntegrationsView; canEdit: boolean; account: string }) {
   return (
     <div className="grid gap-3">
       {!view.encryptionReady && (
@@ -12,7 +12,7 @@ export function IntegrationsPanel({ section, view, canEdit }: { section: Integra
           Falta SETTINGS_ENCRYPTION_KEY en el servidor: puedes editar los datos no secretos, pero las llaves solo se pueden cambiar en las variables de entorno.
         </p>
       )}
-      <IntegrationForm section={section} state={view[section]} version={view.updatedAt} canEdit={canEdit} encryptionReady={view.encryptionReady} />
+      <IntegrationForm key={section} section={section} state={view[section]} version={view.updatedAt} canEdit={canEdit} encryptionReady={view.encryptionReady} account={account} />
       <p className="text-xs text-muted-foreground">
         Última modificación: {formatDateTime(view.updatedAt)}
         {view.updatedBy ? ` por ${view.updatedBy}` : ""}. La contraseña de la base de datos y la clave de cifrado solo se cambian en el servidor.

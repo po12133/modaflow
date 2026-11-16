@@ -69,11 +69,22 @@ export class IntegrationEnvironmentVariables {
   @IsString()
   S3_SECRET_ACCESS_KEY?: string;
 
-  /** Path-style URLs (required by MinIO and most self-hosted S3). */
+  /** Path-style URLs. Empty = automatic: only for local endpoints (localhost, IPs, Docker service names). */
   @IsOptional()
-  @Transform(toBoolean)
+  @Transform((p: { value: unknown }) => toBoolean({ value: emptyToUndefined(p) }))
   @IsBoolean()
-  S3_FORCE_PATH_STYLE: boolean = true;
+  S3_FORCE_PATH_STYLE?: boolean;
+
+  /** Public bucket: images use short direct URLs instead of signed ones (payment receipts stay signed). */
+  @IsOptional()
+  @Transform((p: { value: unknown }) => toBoolean({ value: emptyToUndefined(p) }))
+  @IsBoolean()
+  S3_PUBLIC_URLS?: boolean;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @Matches(/^\/?[A-Za-z0-9][A-Za-z0-9._-]*(\/[A-Za-z0-9][A-Za-z0-9._-]*)*\/?$/)
+  S3_KEY_PREFIX?: string;
 
   /** Development only: create S3_BUCKET at startup if it does not exist. */
   @IsOptional()

@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { DeleteObjectsCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import type { AiConfig, EmailConfig, StorageConfig } from '../../integrations/integration-config.js';
 import { fromHeader, smtpTransport } from '../../mail/mail.service.js';
+import { publicObjectUrl } from '../../storage/object-url.js';
 import { s3Clients } from '../../storage/storage.service.js';
 
 export interface TestResult {
@@ -20,13 +21,23 @@ function s3Message(error: unknown): string {
   return `El proveedor S3 rechazó la prueba (${e.name ?? 'error desconocido'}).`;
 }
 
+async function readsPublicly(url: string): Promise<boolean> {
+  try {
+    return (await fetch(url, { signal: AbortSignal.timeout(10_000) })).ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function testStorage(cfg: StorageConfig): Promise<TestResult> {
   const { client, signer } = s3Clients(cfg);
-  const Key = `platform/healthcheck/${randomUUID()}.txt`;
+  const Key = `${cfg.keyPrefix}platform/healthcheck/${randomUUID()}.txt`;
   try {
     await client.send(new PutObjectCommand({ Bucket: cfg.bucket, Key, Body: 'ModaFlow', ContentType: 'text/plain' }));
+    const publicRead = cfg.publicUrls ? await readsPublicly(publicObjectUrl(cfg, Key.slice(cfg.keyPrefix.length))) : true;
     await client.send(new DeleteObjectsCommand({ Bucket: cfg.bucket, Delete: { Objects: [{ Key }], Quiet: true } }));
-    return { ok: true, message: `Conexión correcta: se subió y borró un archivo de prueba en "${cfg.bucket}".` };
+    if (!publicRead) return { ok: false, message: 'Se pudo subir, pero el bucket no permite lectura pública: las imágenes no se verían. Hazlo público en tu proveedor o desactiva "Imágenes públicas".' };
+    return { ok: true, message: `Conexión correcta: se subió y borró un archivo de prueba en "${cfg.bucket}/${cfg.keyPrefix}".` };
   } catch (error) {
     return { ok: false, message: s3Message(error) };
   } finally {

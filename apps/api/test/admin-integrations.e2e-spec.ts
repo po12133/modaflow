@@ -6,6 +6,8 @@ import { configureApp } from './../src/app.setup.js';
 import { encryptSecret } from './../src/common/secret-box.js';
 import { generateToken, sha256 } from './../src/common/crypto.js';
 import { IntegrationConfigService } from './../src/integrations/integration-config.service.js';
+import { s3Clients, StorageService } from './../src/storage/storage.service.js';
+import { HeadObjectCommand } from '@aws-sdk/client-s3';
 import type { PrismaService } from './../src/prisma/prisma.service.js';
 import { ownerPrisma, testModule } from './support/db.js';
 
@@ -17,7 +19,6 @@ Object.assign(process.env, {
   S3_BUCKET: 'modaflow-test',
   S3_ACCESS_KEY_ID: process.env['S3_ACCESS_KEY_ID'] ?? 'modaflow-dev',
   S3_SECRET_ACCESS_KEY: process.env['S3_SECRET_ACCESS_KEY'] ?? 'modaflow-dev-secret',
-  S3_FORCE_PATH_STYLE: 'true',
   S3_AUTO_CREATE_BUCKET: 'true',
 });
 
@@ -78,7 +79,10 @@ describe('Integrations editable from the admin panel (e2e)', () => {
     expect(before).toMatchObject({ encryptionReady: true, ai: { active: false }, storage: { active: true, fields: { s3Bucket: { source: 'env', envValue: 'modaflow-test' } } } });
 
     expect((await boss.patch('/admin/integrations/ai').send({ currentPassword: 'incorrecta', anthropicApiKey: FAKE_AI_KEY }).expect(400)).body.code).toBe('INVALID_PASSWORD');
+    const bad = await boss.patch('/admin/integrations/ai').send({ currentPassword: PASSWORD, anthropicModel: 'alguien@gmail.com' }).expect(400);
+    expect(JSON.stringify(bad.body)).toContain('Elige uno de los modelos de la lista.');
     const saved = (await boss.patch('/admin/integrations/ai').send({ currentPassword: PASSWORD, anthropicApiKey: FAKE_AI_KEY, anthropicModel: 'claude-sonnet-5-5' }).expect(200)).body;
+    expect(saved.ai.fields.anthropicModel.options.map((o: { value: string }) => o.value)).toContain('claude-opus-5-5');
     expect(saved.ai).toMatchObject({ active: true, fields: { anthropicModel: { value: 'claude-sonnet-5-5', source: 'panel' } }, secrets: { anthropicApiKey: { configured: true, source: 'panel', hint: 'cdef', unreadable: false } } });
     expect(JSON.stringify(saved)).not.toContain(FAKE_AI_KEY);
 
@@ -111,6 +115,45 @@ describe('Integrations editable from the admin panel (e2e)', () => {
     const smtp = (await boss.post('/admin/integrations/email/test').send({ currentPassword: PASSWORD, smtpHost: '127.0.0.1', smtpPort: 1, smtpFromEmail: 'no-reply@modaflow.test' }).expect(200)).body;
     expect(smtp).toMatchObject({ ok: false });
     expect((await prisma.integrationSettings.findUniqueOrThrow({ where: { id: 1 } })).smtpHost).toBeNull();
+  });
+
+  it('keeps every object inside the configured folder of the bucket', async () => {
+    const boss = await staff('carpeta', 'SUPERADMIN');
+    const saved = (await boss.patch('/admin/integrations/storage').send({ currentPassword: PASSWORD, s3KeyPrefix: '/modaflow/' }).expect(200)).body;
+    expect(saved.storage.fields.s3KeyPrefix).toMatchObject({ value: 'modaflow', source: 'panel' });
+    await boss.patch('/admin/integrations/storage').send({ currentPassword: PASSWORD, s3KeyPrefix: '../fuera' }).expect(400);
+
+    await shopApp.get(IntegrationConfigService).refresh();
+    const cfg = shopApp.get(IntegrationConfigService).snapshot().storage!;
+    expect(cfg.keyPrefix).toBe('modaflow/');
+    const storage = shopApp.get(StorageService);
+    const key = `tenants/prueba-${run}/archivo.txt`;
+    await storage.put(key, Buffer.from('hola'), 'text/plain');
+    const { client, signer } = s3Clients(cfg);
+    await client.send(new HeadObjectCommand({ Bucket: cfg.bucket, Key: `modaflow/${key}` }));
+    await expect(client.send(new HeadObjectCommand({ Bucket: cfg.bucket, Key: key }))).rejects.toThrow();
+    expect((await storage.get(key)).toString()).toBe('hola');
+    expect(await storage.fileUrl(key)).toContain(`/modaflow/${key}?X-Amz-`);
+    await storage.deleteMany([key]);
+    await expect(client.send(new HeadObjectCommand({ Bucket: cfg.bucket, Key: `modaflow/${key}` }))).rejects.toThrow();
+    client.destroy();
+    signer.destroy();
+
+    await boss.patch('/admin/integrations/storage').send({ currentPassword: PASSWORD, s3KeyPrefix: null }).expect(200);
+  });
+
+  it('serves short direct URLs when the bucket is public, but keeps receipts signed', async () => {
+    const boss = await staff('publico', 'SUPERADMIN');
+    await boss.patch('/admin/integrations/storage').send({ currentPassword: PASSWORD, s3PublicUrls: true }).expect(200);
+    const integrations = shopApp.get(IntegrationConfigService);
+    await integrations.refresh();
+    const storage = shopApp.get(StorageService);
+    expect(await storage.fileUrl('tenants/t/products/p/a-thumb.webp')).toBe(`${process.env['S3_ENDPOINT']}/modaflow-test/tenants/t/products/p/a-thumb.webp`);
+    expect(await storage.privateFileUrl('tenants/t/receipts/r')).toContain('X-Amz-Signature=');
+    const test = (await boss.post('/admin/integrations/storage/test').send({ currentPassword: PASSWORD }).expect(200)).body;
+    expect(test).toMatchObject({ ok: false, message: expect.stringContaining('no permite lectura pública') });
+    await boss.patch('/admin/integrations/storage').send({ currentPassword: PASSWORD, s3PublicUrls: null }).expect(200);
+    await integrations.refresh();
   });
 
   it('support can only read; an undecryptable secret is reported and disables the section', async () => {

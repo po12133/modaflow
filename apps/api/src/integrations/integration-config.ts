@@ -11,6 +11,8 @@ export interface StorageConfig {
   accessKeyId: string;
   secretAccessKey: string;
   forcePathStyle: boolean;
+  keyPrefix: string;
+  publicUrls: boolean;
 }
 
 export interface AiConfig {
@@ -42,6 +44,8 @@ export interface IntegrationEnv {
   S3_ACCESS_KEY_ID?: string;
   S3_SECRET_ACCESS_KEY?: string;
   S3_FORCE_PATH_STYLE?: boolean;
+  S3_KEY_PREFIX?: string;
+  S3_PUBLIC_URLS?: boolean;
   ANTHROPIC_API_KEY?: string;
   ANTHROPIC_MODEL?: string;
   SMTP_HOST?: string;
@@ -57,6 +61,45 @@ export type IntegrationRow = Omit<IntegrationSettings, 'id' | 'updatedById' | 'u
 
 export const DEFAULT_AI_MODEL = 'claude-opus-5-5';
 
+export function isLocalEndpoint(endpoint: string | undefined): boolean {
+  if (!endpoint) return false;
+  try {
+    const host = new URL(endpoint).hostname;
+    return !host.includes('.') || /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith('[');
+  } catch {
+    return false;
+  }
+}
+
+export function withoutBucketHost(endpoint: string | undefined, bucket: string): string | undefined {
+  if (!endpoint) return endpoint;
+  try {
+    const url = new URL(endpoint);
+    if (!url.hostname.startsWith(`${bucket}.`)) return endpoint;
+    url.hostname = url.hostname.slice(bucket.length + 1);
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return endpoint;
+  }
+}
+
+export function normalizeKeyPrefix(prefix: string | undefined): string {
+  const clean = (prefix ?? '').trim().replace(/^\/+|\/+$/g, '');
+  return clean ? `${clean}/` : '';
+}
+
+export interface ModelOption {
+  value: string;
+  label: string;
+}
+
+export const AI_MODEL_OPTIONS: ModelOption[] = [
+  { value: 'claude-opus-5-5', label: 'Claude Opus 5.5 · máxima precisión (recomendado)' },
+  { value: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5 · equilibrio entre precisión y costo' },
+  { value: 'claude-haiku-5-5', label: 'Claude Haiku 5.5 · el más rápido y económico' },
+  { value: 'claude-fable-5-2', label: 'Claude Fable 5.2' },
+];
+
 const pick = <T>(panel: T | null | undefined, env: T | undefined): T | undefined => (panel !== null && panel !== undefined && panel !== '' ? panel : env || undefined);
 
 export function resolveIntegrations(row: IntegrationRow | null, env: IntegrationEnv, decrypt: (blob: string) => string | null): ResolvedIntegrations {
@@ -68,13 +111,15 @@ export function resolveIntegrations(row: IntegrationRow | null, env: Integration
   const storage: StorageConfig | null =
     bucket && accessKeyId && secretAccessKey
       ? {
-          endpoint: pick(row?.s3Endpoint, env.S3_ENDPOINT),
-          publicEndpoint: pick(row?.s3PublicEndpoint, env.S3_PUBLIC_ENDPOINT),
+          endpoint: withoutBucketHost(pick(row?.s3Endpoint, env.S3_ENDPOINT), bucket),
+          publicEndpoint: withoutBucketHost(pick(row?.s3PublicEndpoint, env.S3_PUBLIC_ENDPOINT), bucket),
           region: pick(row?.s3Region, env.S3_REGION) ?? 'us-east-1',
           bucket,
           accessKeyId,
           secretAccessKey,
-          forcePathStyle: row?.s3ForcePathStyle ?? env.S3_FORCE_PATH_STYLE ?? true,
+          forcePathStyle: env.S3_FORCE_PATH_STYLE ?? isLocalEndpoint(pick(row?.s3Endpoint, env.S3_ENDPOINT)),
+          keyPrefix: normalizeKeyPrefix(pick(row?.s3KeyPrefix, env.S3_KEY_PREFIX)),
+          publicUrls: row?.s3PublicUrls ?? env.S3_PUBLIC_URLS ?? false,
         }
       : null;
 

@@ -6,8 +6,9 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { type IntegrationEnv, type IntegrationRow, type ResolvedIntegrations, resolveIntegrations } from './integration-config.js';
 
 const TTL_MS = 15_000;
+const blankToUndefined = (value: unknown) => (value === '' || value === null ? undefined : value);
 const ENV_KEYS = [
-  'S3_ENDPOINT', 'S3_PUBLIC_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'S3_FORCE_PATH_STYLE',
+  'S3_ENDPOINT', 'S3_PUBLIC_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'S3_FORCE_PATH_STYLE', 'S3_KEY_PREFIX', 'S3_PUBLIC_URLS',
   'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL',
   'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM_EMAIL', 'SMTP_FROM_NAME',
 ] as const;
@@ -26,7 +27,7 @@ export class IntegrationConfigService implements OnModuleInit {
     private readonly prisma: PrismaService,
     config: ConfigService<EnvironmentVariables, true>,
   ) {
-    this.env = Object.fromEntries(ENV_KEYS.map((k) => [k, config.get(k, { infer: true }) || undefined])) as IntegrationEnv;
+    this.env = Object.fromEntries(ENV_KEYS.map((k) => [k, blankToUndefined(config.get(k, { infer: true }))])) as IntegrationEnv;
     const key = config.get('SETTINGS_ENCRYPTION_KEY', { infer: true });
     this.key = isEncryptionKey(key) ? key : undefined;
     this.current = resolveIntegrations(null, this.env, () => null);

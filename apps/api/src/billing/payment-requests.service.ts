@@ -47,7 +47,7 @@ export class PaymentRequestsService {
       amountExpected: rest.amountExpected?.toFixed(2) ?? null,
       amountConfirmed: rest.amountConfirmed?.toFixed(2) ?? null,
       hasReceipt: Boolean(receiptKey),
-      receiptUrl: receiptKey ? await this.storage.signedUrl(imageKeys(receiptKey).main).catch(() => null) : null,
+      receiptUrl: receiptKey ? await this.storage.privateFileUrl(imageKeys(receiptKey).main).catch(() => null) : null,
     };
   }
 

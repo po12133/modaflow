@@ -2,10 +2,16 @@ export type IntegrationSection = "storage" | "ai" | "email";
 export type FieldSource = "panel" | "env" | "none";
 type Plain = string | number | boolean | null;
 
+export interface FieldOption {
+  value: string;
+  label: string;
+}
+
 export interface PlainFieldState {
   value: Plain;
   envValue: Plain;
   source: FieldSource;
+  options?: FieldOption[];
 }
 
 export interface SecretFieldState {
@@ -35,7 +41,7 @@ export interface IntegrationTestResult {
   message: string;
 }
 
-export type FieldKind = "text" | "number" | "boolean";
+export type FieldKind = "text" | "number" | "boolean" | "select";
 
 export interface FieldDef {
   name: string;

@@ -19,7 +19,7 @@ export class PaymentInfoService {
       accountNumber: s.transferEnabled ? s.accountNumber : null,
       accountType: s.transferEnabled ? s.accountType : null,
       instructions: s.paymentInstructions,
-      qrImageUrl: s.qrEnabled && s.qrImageKey ? await this.storage.signedUrl(imageKeys(s.qrImageKey).main).catch(() => null) : null,
+      qrImageUrl: s.qrEnabled && s.qrImageKey ? await this.storage.fileUrl(imageKeys(s.qrImageKey).main).catch(() => null) : null,
       supportWhatsapp: s.supportWhatsapp,
       currency: s.currency,
     };

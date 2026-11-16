@@ -741,7 +741,9 @@ docker compose -f deploy/production/compose.yaml --env-file .env down
    | `S3_REGION` | región (`auto` en Cloudflare R2) |
    | `S3_BUCKET` | bucket **privado** de fotos |
    | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | credenciales con permisos de lectura, escritura y borrado en el bucket (secretas) |
-   | `S3_FORCE_PATH_STYLE` | `true` para MinIO/SeaweedFS/R2; `false` es válido para AWS S3 |
+   | `S3_FORCE_PATH_STYLE` | vacío = automático: bucket en el dominio (Hetzner, AWS); formato path solo para endpoints locales (localhost, IP, nombre de servicio Docker). `true`/`false` lo fuerza |
+   | `S3_PUBLIC_URLS` | `true` si el bucket es público: las imágenes usan URLs directas y cortas; los comprobantes de pago siguen firmados. También se configura desde el panel |
+   | `S3_KEY_PREFIX` | carpeta dentro del bucket (por ejemplo `modaflow`); vacío = raíz. Cambiarla exige mover los archivos ya subidos |
 
    **Almacenamiento S3 en producción** (elige uno y crea el bucket, que debe ser privado):
    - **Cloudflare R2**: `S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`, `S3_REGION=auto`.

@@ -67,7 +67,7 @@ export class PaymentReviewService {
       amountExpected: rest.amountExpected?.toFixed(2) ?? null,
       amountConfirmed: rest.amountConfirmed?.toFixed(2) ?? null,
       period: rest.period ? { ...rest.period, amount: rest.period.amount.toFixed(2) } : null,
-      receiptUrl: receiptKey ? await this.storage.signedUrl(imageKeys(receiptKey).main).catch(() => null) : null,
+      receiptUrl: receiptKey ? await this.storage.privateFileUrl(imageKeys(receiptKey).main).catch(() => null) : null,
     };
   }
 

@@ -16,7 +16,7 @@ const SAVED: Record<Intent, string> = {
   test: "",
 };
 
-export function IntegrationForm({ section, state, version, canEdit, encryptionReady }: { section: IntegrationSection; state: SectionState; version: string; canEdit: boolean; encryptionReady: boolean }) {
+export function IntegrationForm({ section, state, version, canEdit, encryptionReady, account }: { section: IntegrationSection; state: SectionState; version: string; canEdit: boolean; encryptionReady: boolean; account: string }) {
   const def = INTEGRATION_SECTIONS[section];
   const formRef = useRef<HTMLFormElement>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -65,6 +65,7 @@ export function IntegrationForm({ section, state, version, canEdit, encryptionRe
       </fieldset>
       {canEdit ? (
         <div className="grid gap-3 border-t pt-4">
+          <input type="email" name="account" value={account} autoComplete="username" readOnly hidden />
           <label className="grid gap-1 text-sm font-semibold sm:max-w-sm">
             Tu contraseña actual (confirmación)
             <input name="currentPassword" type="password" required autoComplete="current-password" maxLength={128} className={dialogField} />

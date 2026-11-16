@@ -43,7 +43,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/configu
         </ul>
       </nav>
       {integration ? (
-        <IntegrationsPanel section={integration} view={await getIntegrations()} canEdit={canEdit} />
+        <IntegrationsPanel section={integration} view={await getIntegrations()} canEdit={canEdit} account={me?.email ?? ""} />
       ) : (
         <SettingsPanel key={tab} tab={tab} s={await getPlatformSettings()} canEdit={canEdit} />
       )}

@@ -1,7 +1,7 @@
 import { cn } from "@modaflow/ui/lib/utils";
 import { dialogField } from "@/components/action-dialog";
 import { SOURCE_LABELS } from "@/config/integrations";
-import type { FieldDef, FieldSource, PlainFieldState, SecretFieldState } from "@/types/integrations";
+import type { FieldDef, FieldOption, FieldSource, PlainFieldState, SecretFieldState } from "@/types/integrations";
 
 const TONES: Record<FieldSource, string> = { panel: "bg-primary/10 text-violet-strong", env: "bg-muted text-ink-2", none: "bg-amber/15 text-[#8a5a00]" };
 
@@ -21,16 +21,28 @@ function Label({ text, source, help, children }: { text: string; source: FieldSo
 
 const envText = (v: PlainFieldState["envValue"]) => (v === null || v === "" ? null : typeof v === "boolean" ? (v ? "Sí" : "No") : String(v));
 
+const BOOLEAN_OPTIONS: FieldOption[] = [{ value: "true", label: "Sí" }, { value: "false", label: "No" }];
+
+function choices(def: FieldDef, state: PlainFieldState): FieldOption[] {
+  const options = def.kind === "boolean" ? BOOLEAN_OPTIONS : (state.options ?? []);
+  const current = state.value === null ? null : String(state.value);
+  return current === null || options.some((o) => o.value === current) ? options : [...options, { value: current, label: `${current} (actual, ya no disponible)` }];
+}
+
+function optionLabel(options: FieldOption[], value: string | null): string | null {
+  return value === null ? null : (options.find((o) => o.value === value)?.label.split(" · ")[0] ?? value);
+}
+
 export function PlainField({ def, state }: { def: FieldDef; state: PlainFieldState }) {
   const fromEnv = envText(state.envValue);
-  if (def.kind === "boolean") {
-    const value = state.value === null ? "" : String(state.value);
+  if (def.kind === "boolean" || def.kind === "select") {
+    const options = choices(def, state);
+    const envLabel = optionLabel(options, fromEnv);
     return (
       <Label text={def.label} source={state.source} help={def.help}>
-        <select name={def.name} defaultValue={value} className={dialogField}>
-          <option value="">{fromEnv ? `Usar variable de entorno (${fromEnv})` : "Usar variable de entorno"}</option>
-          <option value="true">Sí</option>
-          <option value="false">No</option>
+        <select name={def.name} defaultValue={state.value === null ? "" : String(state.value)} className={dialogField}>
+          <option value="">{envLabel ? `Usar variable de entorno (${envLabel})` : "Usar variable de entorno"}</option>
+          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </Label>
     );
@@ -43,6 +55,9 @@ export function PlainField({ def, state }: { def: FieldDef; state: PlainFieldSta
         defaultValue={state.value === null ? "" : String(state.value)}
         placeholder={fromEnv ? `Variable de entorno: ${fromEnv}` : def.placeholder}
         autoComplete="off"
+        data-1p-ignore
+        data-lpignore="true"
+        data-form-type="other"
         spellCheck={false}
         className={dialogField}
       />
@@ -59,7 +74,7 @@ function secretPlaceholder(s: SecretFieldState): string {
 export function SecretField({ name, label, help, state, disabled }: { name: string; label: string; help?: string; state: SecretFieldState; disabled: boolean }) {
   return (
     <Label text={label} source={state.source} help={help}>
-      <input name={name} type="password" autoComplete="new-password" spellCheck={false} disabled={disabled} placeholder={secretPlaceholder(state)} className={dialogField} />
+      <input name={name} type="password" autoComplete="new-password" data-1p-ignore data-lpignore="true" data-form-type="other" spellCheck={false} disabled={disabled} placeholder={secretPlaceholder(state)} className={dialogField} />
       {state.unreadable && <span role="alert" className="text-xs font-semibold text-destructive">No se puede leer la llave guardada (¿cambió SETTINGS_ENCRYPTION_KEY?). Vuelve a ingresarla.</span>}
       {state.source === "panel" && (
         <span className="flex items-center gap-2 text-xs font-normal">

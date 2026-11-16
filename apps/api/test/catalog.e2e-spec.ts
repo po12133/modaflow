@@ -32,7 +32,6 @@ Object.assign(process.env, {
   S3_BUCKET: 'modaflow-test',
   S3_ACCESS_KEY_ID: process.env['S3_ACCESS_KEY_ID'] ?? 'modaflow-dev',
   S3_SECRET_ACCESS_KEY: process.env['S3_SECRET_ACCESS_KEY'] ?? 'modaflow-dev-secret',
-  S3_FORCE_PATH_STYLE: 'true',
   S3_AUTO_CREATE_BUCKET: 'true',
 });
 

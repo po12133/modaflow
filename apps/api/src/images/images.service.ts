@@ -114,7 +114,7 @@ export class ImagesService {
     isPrimary: boolean;
   }): Promise<ImageView> {
     const keys = imageKeys(image.storageKey);
-    const [url, thumbUrl] = await Promise.all([this.storage.signedUrl(keys.main), this.storage.signedUrl(keys.thumb)]);
+    const [url, thumbUrl] = await Promise.all([this.storage.fileUrl(keys.main), this.storage.fileUrl(keys.thumb)]);
     return {
       id: image.id,
       url,

@@ -57,7 +57,7 @@ export class PlatformSettingsService {
   private async qrUrl(key: string | null): Promise<string | null> {
     if (!key) return null;
     try {
-      return await this.storage.signedUrl(imageKeys(key).main);
+      return await this.storage.fileUrl(imageKeys(key).main);
     } catch {
       return null;
     }

@@ -13,12 +13,15 @@ import { AppError } from '../common/app-error.js';
 import { EnvironmentVariables } from '../config/env.validation.js';
 import type { StorageConfig } from '../integrations/integration-config.js';
 import { IntegrationConfigService } from '../integrations/integration-config.service.js';
+import { publicObjectUrl } from './object-url.js';
 
 interface Clients {
   key: string;
   client: S3Client;
   signer: S3Client;
   bucket: string;
+  prefix: string;
+  cfg: StorageConfig;
 }
 
 export function s3Clients(cfg: StorageConfig): { client: S3Client; signer: S3Client } {
@@ -65,7 +68,7 @@ export class StorageService implements OnModuleInit {
     const cfg = this.integrations.snapshot().storage;
     if (!cfg) return null;
     const key = JSON.stringify(cfg);
-    if (this.clients?.key !== key) this.clients = { key, bucket: cfg.bucket, ...s3Clients(cfg) };
+    if (this.clients?.key !== key) this.clients = { key, bucket: cfg.bucket, prefix: cfg.keyPrefix, cfg, ...s3Clients(cfg) };
     return this.clients;
   }
 
@@ -90,13 +93,13 @@ export class StorageService implements OnModuleInit {
   }
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
-    const { client, bucket } = this.require();
-    await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType, CacheControl: 'private, max-age=31536000, immutable' }));
+    const { client, bucket, prefix } = this.require();
+    await client.send(new PutObjectCommand({ Bucket: bucket, Key: prefix + key, Body: body, ContentType: contentType, CacheControl: 'private, max-age=31536000, immutable' }));
   }
 
   async get(key: string): Promise<Buffer> {
-    const { client, bucket } = this.require();
-    const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const { client, bucket, prefix } = this.require();
+    const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: prefix + key }));
     if (!res.Body) throw new Error(`Empty object ${key}`);
     return Buffer.from(await res.Body.transformToByteArray());
   }
@@ -104,13 +107,21 @@ export class StorageService implements OnModuleInit {
   async deleteMany(keys: string[]): Promise<void> {
     const state = this.state();
     if (keys.length === 0 || !state) return;
-    await state.client.send(new DeleteObjectsCommand({ Bucket: state.bucket, Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true } }));
+    await state.client.send(new DeleteObjectsCommand({ Bucket: state.bucket, Delete: { Objects: keys.map((key) => ({ Key: state.prefix + key })), Quiet: true } }));
   }
 
-  async signedUrl(key: string): Promise<string | null> {
+  /** Image URL for the browser: short and direct when the bucket is public, signed otherwise. */
+  async fileUrl(key: string): Promise<string | null> {
     const state = this.state();
     if (!state) return null;
-    return getSignedUrl(state.signer, new GetObjectCommand({ Bucket: state.bucket, Key: key }), { expiresIn: this.signedUrlTtl });
+    return state.cfg.publicUrls ? publicObjectUrl(state.cfg, key) : this.privateFileUrl(key);
+  }
+
+  /** Always signed and temporary (payment receipts). */
+  async privateFileUrl(key: string): Promise<string | null> {
+    const state = this.state();
+    if (!state) return null;
+    return getSignedUrl(state.signer, new GetObjectCommand({ Bucket: state.bucket, Key: state.prefix + key }), { expiresIn: this.signedUrlTtl });
   }
 
   async ping(): Promise<boolean> {

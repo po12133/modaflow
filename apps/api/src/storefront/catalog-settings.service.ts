@@ -129,7 +129,7 @@ export class CatalogSettingsService {
   async url(storageKey: string | null, variant: 'main' | 'thumb' = 'main'): Promise<string | null> {
     if (!storageKey) return null;
     try {
-      return await this.storage.signedUrl(imageKeys(storageKey)[variant]);
+      return await this.storage.fileUrl(imageKeys(storageKey)[variant]);
     } catch {
       return null;
     }
