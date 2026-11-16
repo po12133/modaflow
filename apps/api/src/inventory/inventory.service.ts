@@ -84,7 +84,7 @@ export class InventoryService {
           throw new AppError(HttpStatus.NOT_FOUND, 'VARIANT_NOT_FOUND', 'No se encontró la prenda o talla.');
         }
         if (variant.productStatus !== 'ACTIVE') {
-          throw new AppError(HttpStatus.CONFLICT, 'PRODUCT_ARCHIVED', 'El producto está archivado. Restáuralo para mover su stock.');
+          throw new AppError(HttpStatus.NOT_FOUND, 'VARIANT_NOT_FOUND', 'El producto fue eliminado.');
         }
         return this.applyLocked(tx, tenantId, userId, variant, input);
       });
@@ -199,7 +199,6 @@ export class InventoryService {
       search: q.search,
       categoryId: q.categoryId,
       availability: q.availability,
-      status: 'active',
     });
     const active = { tenantId, status: 'ACTIVE' as const };
     const [total, rows, units, outOfStock, lowStock, productCount] = await this.prisma.$transaction([

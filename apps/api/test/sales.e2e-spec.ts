@@ -81,8 +81,8 @@ describe('Sales and POS (e2e)', () => {
       const vestidos = cats.find((c) => c.name === 'Vestidos')!;
       const vestido = await product(a, { name: 'Vestido floral', categoryId: vestidos.id, color: 'Azul', tags: ['verano'], variants: [{ size: 'S', quantity: 2 }] });
       await product(a, { name: 'Camisa agotada', variants: [{ size: 'L', quantity: 0 }] });
-      const archived = await product(a, { name: 'Falda archivada' });
-      await a.delete(`/products/${archived.id}`).expect(204);
+      const deleted = await product(a, { name: 'Falda eliminada' });
+      await a.delete(`/products/${deleted.id}`).expect(204);
 
       const names = async (qs: string) => (await a.get(`/pos/products?${qs}`).expect(200)).body.items.map((p: { name: string }) => p.name);
       expect(await names('search=floral')).toEqual(['Vestido floral']);
@@ -93,7 +93,7 @@ describe('Sales and POS (e2e)', () => {
       expect(await names('size=s')).toEqual(['Vestido floral']);
       expect(await names('')).not.toContain('Camisa agotada');
       expect(await names('includeOutOfStock=true')).toEqual(expect.arrayContaining(['Camisa agotada', 'Vestido floral']));
-      expect(await names('includeOutOfStock=true')).not.toContain('Falda archivada');
+      expect(await names('includeOutOfStock=true')).not.toContain('Falda eliminada');
       const first = (await a.get('/pos/products?search=floral').expect(200)).body.items[0];
       expect(first).toMatchObject({ salePrice: '100.00', variants: [{ size: 'S', stock: 2 }] });
     });
@@ -265,8 +265,8 @@ describe('Sales and POS (e2e)', () => {
       expect((await sale(a, [{ variantId: ok.variants[0]!.id, quantity: 1 }]).expect(201)).body.number).toBe('V-000001');
     });
 
-    it('cannot sell archived products', async () => {
-      const { a } = await newStore('archivado');
+    it('cannot sell deleted products', async () => {
+      const { a } = await newStore('eliminado');
       const p = await product(a);
       await a.delete(`/products/${p.id}`).expect(204);
       expect((await sale(a, [{ variantId: p.variants[0]!.id, quantity: 1 }]).expect(409)).body.code).toBe('PRODUCT_UNAVAILABLE');

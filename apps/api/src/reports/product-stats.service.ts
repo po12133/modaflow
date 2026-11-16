@@ -97,8 +97,8 @@ export class ProductStatsService {
         return {
           productId: r.product_id,
           name: product?.name ?? '',
-          sku: product?.sku ?? '',
-          status: product?.status ?? 'ARCHIVED',
+          sku: (product?.sku ?? '').replace(/~[0-9a-f]{8}$/, ''),
+          status: product?.status ?? 'DELETED',
           category: product?.category?.name ?? null,
           thumbUrl: thumbs.get(r.product_id) ?? null,
           units: r.units,

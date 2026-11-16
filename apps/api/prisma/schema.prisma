@@ -40,7 +40,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   trialGrant          TrialGrant?
   planChangeRequests  PlanChangeRequest[]
-  productsCreated     Product[]
+  productsCreated     Product[] @relation("ProductCreatedBy")
+  productsDeleted     Product[] @relation("ProductDeletedBy")
   inventoryMovements  InventoryMovement[]
   productImages       ProductImage[]
   aiAnalyses          AiAnalysis[]
@@ -440,7 +441,8 @@ model ProductTag {
 
 enum ProductStatus {
   ACTIVE
-  ARCHIVED
+  /// Deleted by the store: hidden everywhere, kept as a record (sales history, admin consumption).
+  DELETED
 
   @@schema("public")
 }
@@ -471,14 +473,16 @@ model Product {
   status            ProductStatus @default(ACTIVE)
   slug              String        @db.VarChar(140)
   catalogPublished  Boolean       @default(false) @map("catalog_published")
-  archivedAt        DateTime?     @map("archived_at") @db.Timestamptz(3)
+  deletedAt         DateTime?     @map("deleted_at") @db.Timestamptz(3)
+  deletedById       String?       @map("deleted_by_id") @db.Uuid
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant              Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   store               Store                     @relation(fields: [storeId], references: [id], onDelete: Restrict)
   category            Category?                 @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  createdBy           User                      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy           User                      @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  deletedBy           User?                     @relation("ProductDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
   aiAnalysis          AiAnalysis?               @relation(fields: [aiAnalysisId], references: [id], onDelete: SetNull)
   variants            ProductVariant[]
   images              ProductImage[]
@@ -544,6 +548,8 @@ model ProductImage {
   height       Int
   position     Int      @default(0)
   isPrimary    Boolean  @default(false) @map("is_primary")
+  /// Analyzed with AI: kept as a record and never removed from storage.
+  aiScanned    Boolean  @default(false) @map("ai_scanned")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)

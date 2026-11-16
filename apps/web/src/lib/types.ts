@@ -137,7 +137,7 @@ export interface ProductListItem {
   totalStock: number;
   lowStockThreshold: number;
   stockStatus: StockStatus;
-  status: "ACTIVE" | "ARCHIVED";
+  status: "ACTIVE" | "DELETED";
   sizes: string[];
   variantCount: number;
   image: ProductImage | null;
@@ -162,14 +162,13 @@ export interface ProductDetail {
   lowStockThreshold: number;
   totalStock: number;
   stockStatus: StockStatus;
-  status: "ACTIVE" | "ARCHIVED";
+  status: "ACTIVE" | "DELETED";
   variants: Variant[];
   images: ProductImage[];
   aiAssisted: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
-  archivedAt: string | null;
 }
 
 

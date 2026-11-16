@@ -73,7 +73,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/dashbo
         ))}
       </div>
 
-      <ProductFilters values={params as FilterValues} categories={categories} showSort={false} showStatus={false} />
+      <ProductFilters values={params as FilterValues} categories={categories} showSort={false} />
 
       {inv.items.length === 0 ? (
         <p className="rounded-2xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">No hay productos para mostrar.</p>

@@ -39,7 +39,7 @@ export function ProductRow({ row, rank, variantsHref }: { row: ProductReportRow;
         </Link>
         <p className="truncate text-xs text-muted-foreground">
           {row.category ?? "Sin categoría"} · {plural(row.sales, "venta")}
-          {row.status === "ARCHIVED" ? " · archivado" : ""}
+          {row.status === "DELETED" ? " · eliminado" : ""}
         </p>
         <Link href={variantsHref} className="text-xs font-semibold text-primary">
           Ver variantes

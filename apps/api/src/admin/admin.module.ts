@@ -19,9 +19,11 @@ import { PasswordService } from '../auth/password.service.js';
 import { AdminStaffController } from './staff/admin-staff.controller.js';
 import { AdminStaffService } from './staff/admin-staff.service.js';
 
+import { AdminConsumptionController } from './consumption/admin-consumption.controller.js';
+import { AdminConsumptionService } from './consumption/admin-consumption.service.js';
 @Module({
   imports: [AuditModule, AdminBillingModule, NotificationsCoreModule],
-  controllers: [AdminOverviewController, AdminAccountsController, AdminBillingController, AdminStaffController, AdminIntegrationsController],
-  providers: [StaffRolesGuard, SubscriptionExpiryService, AdminDashboardService, AdminStatsService, AdminTenantsService, AdminUsersService, AdminPlansService, AdminSubscriptionsService, AdminStaffService, AdminIntegrationsService, PasswordService],
+  controllers: [AdminConsumptionController, AdminOverviewController, AdminAccountsController, AdminBillingController, AdminStaffController, AdminIntegrationsController],
+  providers: [AdminConsumptionService, StaffRolesGuard, SubscriptionExpiryService, AdminDashboardService, AdminStatsService, AdminTenantsService, AdminUsersService, AdminPlansService, AdminSubscriptionsService, AdminStaffService, AdminIntegrationsService, PasswordService],
 })
 export class AdminModule {}

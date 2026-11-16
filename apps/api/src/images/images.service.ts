@@ -91,6 +91,7 @@ export class ImagesService {
   async deletePending(tenantId: string, id: string): Promise<void> {
     const image = await this.prisma.productImage.findFirst({ where: { id, tenantId, productId: null } });
     if (!image) throw new AppError(HttpStatus.NOT_FOUND, 'IMAGE_NOT_FOUND', 'No se encontró la foto.');
+    if (image.aiScanned) return;
     await this.prisma.productImage.delete({ where: { id: image.id } });
     await this.removeObjects([image.storageKey]);
   }
@@ -136,7 +137,7 @@ export class ImagesService {
     try {
       const cutoff = new Date(Date.now() - ORPHAN_TTL_MS);
       const orphans = await this.prisma.productImage.findMany({
-        where: { tenantId, productId: null, createdAt: { lt: cutoff } },
+        where: { tenantId, productId: null, aiScanned: false, createdAt: { lt: cutoff } },
         select: { id: true, storageKey: true },
         take: 50,
       });

@@ -130,24 +130,14 @@ export async function updateProductAction(id: string, input: ProductUpdateInput)
   }
 }
 
-export async function archiveProductAction(id: string): Promise<ActionResult> {
+export async function deleteProductAction(id: string): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, message: "Producto no válido." };
   try {
     await api(`/products/${encodeURIComponent(id)}`, { method: "DELETE" });
   } catch (error) {
     return fail(error);
   }
-  refresh();
-  return { ok: true, data: undefined };
-}
-
-export async function restoreProductAction(id: string): Promise<ActionResult> {
-  try {
-    await api(`/products/${encodeURIComponent(id)}/restore`, { method: "POST" });
-  } catch (error) {
-    return fail(error);
-  }
-  refresh();
-  return { ok: true, data: undefined };
+  redirect("/dashboard/productos?eliminado=1");
 }
 
 export async function deletePendingImageAction(id: string): Promise<ActionResult> {

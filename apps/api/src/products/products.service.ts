@@ -95,7 +95,7 @@ export class ProductsService {
     }
     return {
       tenantId,
-      status: q.status === 'archived' ? 'ARCHIVED' : 'ACTIVE',
+      status: 'ACTIVE',
       ...(q.categoryId ? { categoryId: q.categoryId } : {}),
       ...(and.length ? { AND: and } : {}),
     };
@@ -135,7 +135,7 @@ export class ProductsService {
   }
 
   async get(tenantId: string, id: string) {
-    const product = await this.prisma.product.findFirst({ where: { id, tenantId }, include: DETAIL_INCLUDE });
+    const product = await this.prisma.product.findFirst({ where: { id, tenantId, status: 'ACTIVE' }, include: DETAIL_INCLUDE });
     if (!product) throw this.notFound();
     return this.toDetail(product);
   }
@@ -223,9 +223,7 @@ export class ProductsService {
     try {
       removedKeys = await this.prisma.$transaction(async (tx) => {
         const product = await this.lockProduct(tx, tenantId, id);
-        if (product.status === 'ARCHIVED') {
-          throw new AppError(HttpStatus.CONFLICT, 'PRODUCT_ARCHIVED', 'Restaura el producto para poder editarlo.');
-        }
+        if (product.status === 'DELETED') throw this.notFound();
 
         const data: Prisma.ProductUpdateInput = {};
         if (dto.name !== undefined) data.name = cleanText(dto.name);
@@ -273,11 +271,14 @@ export class ProductsService {
         }
 
         if (dto.images) {
-          const current = await tx.productImage.findMany({ where: { productId: id }, select: { id: true, storageKey: true } });
+          const current = await tx.productImage.findMany({ where: { productId: id }, select: { id: true, storageKey: true, aiScanned: true } });
           const removed = current.filter((img) => !dto.images!.imageIds.includes(img.id));
-          if (removed.length) await tx.productImage.deleteMany({ where: { id: { in: removed.map((r) => r.id) } } });
+          const kept = removed.filter((img) => img.aiScanned);
+          const discarded = removed.filter((img) => !img.aiScanned);
+          if (kept.length) await tx.productImage.updateMany({ where: { id: { in: kept.map((r) => r.id) } }, data: { productId: null, isPrimary: false } });
+          if (discarded.length) await tx.productImage.deleteMany({ where: { id: { in: discarded.map((r) => r.id) } } });
           await this.attachImages(tx, tenantId, id, dto.images.imageIds, dto.images.primaryImageId);
-          return removed.map((r) => r.storageKey);
+          return discarded.map((r) => r.storageKey);
         }
         return [];
       });
@@ -288,28 +289,21 @@ export class ProductsService {
     return this.get(tenantId, id);
   }
 
-  /** Logical delete: archived products keep their history and stop counting towards the limit. */
-  async archive(tenantId: string, id: string) {
+  /**
+   * The store no longer sees the product and it stops counting towards the limit.
+   * The row, its photos and its sales stay as a record; code and catalog link are released.
+   */
+  async remove(tenantId: string, userId: string, id: string) {
     await this.entitlements.assertOperational(tenantId);
-    const result = await this.prisma.product.updateMany({
-      where: { id, tenantId, status: 'ACTIVE' },
-      data: { status: 'ARCHIVED', archivedAt: new Date() },
-    });
-    if (result.count === 0) {
-      const exists = await this.prisma.product.count({ where: { id, tenantId } });
-      if (!exists) throw this.notFound();
-    }
-  }
-
-  async restore(tenantId: string, id: string) {
-    const ent = await this.entitlements.assertOperational(tenantId);
     await this.prisma.$transaction(async (tx) => {
       const product = await this.lockProduct(tx, tenantId, id);
-      if (product.status === 'ACTIVE') return;
-      await this.lockAndCheckProductLimit(tx, tenantId, ent.limits.products.limit, ent.plan.name);
-      await tx.product.update({ where: { id }, data: { status: 'ACTIVE', archivedAt: null } });
+      if (product.status === 'DELETED') throw this.notFound();
+      await tx.$executeRaw`
+        UPDATE products
+        SET status = 'DELETED', deleted_at = now(), deleted_by_id = ${userId}::uuid, catalog_published = false,
+            sku = left(sku, 30) || '~' || left(id::text, 8), slug = left(slug, 120) || '-borrado-' || left(id::text, 8)
+        WHERE id = ${id}::uuid AND tenant_id = ${tenantId}::uuid`;
     });
-    return this.get(tenantId, id);
   }
 
   // ---------------------------------------------------------------------------
@@ -328,14 +322,14 @@ export class ProductsService {
       throw new AppError(
         HttpStatus.FORBIDDEN,
         'PLAN_LIMIT_REACHED',
-        `Alcanzaste el límite de ${max} productos de tu plan ${planName}. Archiva productos que ya no vendes o cambia de plan.`,
+        `Alcanzaste el límite de ${max} productos de tu plan ${planName}. Elimina productos que ya no vendes o cambia de plan.`,
         { limit: 'products', max, used: active },
       );
     }
   }
 
   private async lockProduct(tx: Tx, tenantId: string, id: string) {
-    const rows = await tx.$queryRaw<{ id: string; sku: string; status: 'ACTIVE' | 'ARCHIVED' }[]>`
+    const rows = await tx.$queryRaw<{ id: string; sku: string; status: 'ACTIVE' | 'DELETED' }[]>`
       SELECT id, sku, status FROM products WHERE id = ${id}::uuid AND tenant_id = ${tenantId}::uuid FOR UPDATE`;
     const product = rows[0];
     if (!product) throw this.notFound();
@@ -509,7 +503,6 @@ export class ProductsService {
       createdBy: p.createdBy.name,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
-      archivedAt: p.archivedAt,
     };
   }
 }

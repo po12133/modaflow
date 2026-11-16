@@ -275,10 +275,6 @@ export class ListProductsQueryDto {
   @IsOptional() @IsIn(AVAILABILITY)
   availability?: (typeof AVAILABILITY)[number];
 
-  @ApiPropertyOptional({ enum: ['active', 'archived'], default: 'active' })
-  @IsOptional() @IsIn(['active', 'archived'])
-  status?: 'active' | 'archived';
-
   @ApiPropertyOptional({ enum: PRODUCT_SORTS, default: 'newest' })
   @IsOptional() @IsIn(PRODUCT_SORTS)
   sort?: (typeof PRODUCT_SORTS)[number];

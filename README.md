@@ -124,10 +124,19 @@ La API valida sus variables al arrancar ([env.validation.ts](apps/api/src/config
   (talla/color con su propio **stock** y SKU). Una prenda única o de fardo es una sola variante sin talla.
 - SKU automático por tienda (`P00001`, variantes `P00001-M-ROJO`) y editable.
 - **Límite del plan**: cuentan solo los productos **activos**; cada producto cuenta una vez sin importar sus
-  variantes o unidades. Archivar libera el cupo y restaurar vuelve a comprobarlo. Las ediciones están permitidas
+  variantes o unidades. Eliminar un producto libera el cupo. Las ediciones están permitidas
   aunque se alcance el límite, siempre que la suscripción esté activa. La comprobación bloquea la fila de la
   suscripción (`FOR UPDATE`), así que dos registros simultáneos no pueden superar el máximo.
-- Archivar es un borrado lógico (`DELETE /products/:id`): nunca se elimina un producto con historial.
+- **Eliminar** (`DELETE /products/:id`): la tienda deja de ver el producto (inventario, punto de venta, catálogo) y
+  libera su cupo, su código y su enlace del catálogo; no se puede deshacer. La fila (`status = DELETED`, `deleted_at`,
+  `deleted_by_id`), sus fotos y su historial de ventas se conservan como registro.
+- Las fotos analizadas con IA (`product_images.ai_scanned`) nunca se borran del almacenamiento, aunque se quiten del
+  formulario o se elimine el producto: son el registro de lo que se envió a Claude.
+- **Consumo en el panel admin** (`/consumo`): análisis con IA, tokens de entrada y salida y costo estimado en USD (precio
+  de lista por modelo en [ai-pricing.ts](apps/api/src/admin/consumption/ai-pricing.ts)), productos creados y
+  eliminados, fotos y almacenamiento por cuenta, y el registro de cada análisis con su foto (`/consumo/ia`).
+  Endpoints: `GET /admin/consumption`, `/admin/consumption/accounts`, `/admin/consumption/ai-log`,
+  `/admin/consumption/tenants/:id`.
 
 **Inventario**
 - El stock **solo** cambia con un `InventoryMovement` (entrada inicial, entrada de mercadería, salida manual,

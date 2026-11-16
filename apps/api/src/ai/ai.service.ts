@@ -96,6 +96,7 @@ export class AiService {
         ? await this.prisma.aiAnalysis.update({ where: { id: existing.id }, data })
         : await this.prisma.aiAnalysis.create({ data: { ...data, tenantId, idempotencyKey } });
       analysisId = row.id;
+      await this.prisma.productImage.updateMany({ where: { tenantId, id: { in: ids } }, data: { aiScanned: true } });
     } catch (error) {
       await this.entitlements.refundAiCredit(tenantId, credit.periodStart);
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

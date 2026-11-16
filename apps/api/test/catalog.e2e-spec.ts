@@ -392,8 +392,8 @@ describe('Catalog, inventory and AI (e2e)', () => {
   });
 
   // -------------------------------------------------------------------------
-  describe('plan limits, archive and subscription', () => {
-    it('enforces the product limit even with simultaneous requests; archived products free a slot', async () => {
+  describe('plan limits, deletion and subscription', () => {
+    it('enforces the product limit even with simultaneous requests; deleted products free a slot', async () => {
       const { a, tenantId } = await newStore('limite');
       // Fill 28 of the 30 trial slots directly, then race 6 creations for the last 2.
       const store = await prisma.store.findFirstOrThrow({ where: { tenantId } });
@@ -417,14 +417,35 @@ describe('Catalog, inventory and AI (e2e)', () => {
       const someId = results.find((r) => r.status === 201)!.body.id as string;
       await a.patch(`/products/${someId}`).send({ name: 'Editado al límite' }).expect(200);
 
-      // Archive frees a slot; restoring needs a free slot again.
+      // Deleting frees a slot; the store no longer sees it but the record stays.
+      const before = await prisma.product.findUniqueOrThrow({ where: { id: someId }, include: { variants: true } });
       await a.delete(`/products/${someId}`).expect(204);
-      expect((await a.get('/products?status=archived').expect(200)).body.total).toBe(1);
+      await a.delete(`/products/${someId}`).expect(404);
+      await a.get(`/products/${someId}`).expect(404);
+      await a.patch(`/products/${someId}`).send({ name: 'No' }).expect(404);
       await createProduct(a, { name: 'Ocupa el lugar' }).expect(201);
-      const blocked = await a.post(`/products/${someId}/restore`).expect(403);
-      expect(blocked.body.code).toBe('PLAN_LIMIT_REACHED');
-      const archived = await prisma.product.findUniqueOrThrow({ where: { id: someId }, include: { variants: true } });
-      await a.post('/inventory/entries').send({ variantId: archived.variants[0]!.id, quantity: 1, idempotencyKey: idem() }).expect(409);
+      const deleted = await prisma.product.findUniqueOrThrow({ where: { id: someId } });
+      expect(deleted).toMatchObject({ status: 'DELETED', catalogPublished: false });
+      expect(deleted.deletedAt).not.toBeNull();
+      expect(deleted.deletedById).not.toBeNull();
+      expect(deleted.sku).toBe(`${before.sku}~${someId.slice(0, 8)}`);
+      await a.post('/inventory/entries').send({ variantId: before.variants[0]!.id, quantity: 1, idempotencyKey: idem() }).expect(404);
+    });
+
+    it('keeps AI-scanned photos as a record when they are removed or the product is deleted', async () => {
+      const { a, tenantId } = await newStore('registro');
+      const scanned = (await upload(a, randomUUID()).expect(201)).body;
+      const plain = (await upload(a, randomUUID()).expect(201)).body;
+      await prisma.productImage.update({ where: { id: scanned.id }, data: { aiScanned: true } });
+      await a.delete(`/product-images/${scanned.id}`).expect(204);
+      await a.delete(`/product-images/${plain.id}`).expect(204);
+      expect(await prisma.productImage.count({ where: { id: scanned.id } })).toBe(1);
+      expect(await prisma.productImage.count({ where: { id: plain.id } })).toBe(0);
+
+      const p = (await createProduct(a, { sku: 'REUSO-1' }).expect(201)).body;
+      await a.delete(`/products/${p.id}`).expect(204);
+      await createProduct(a, { name: 'Reusa el código', sku: 'REUSO-1' }).expect(201);
+      expect(await prisma.product.count({ where: { tenantId } })).toBe(2);
     });
 
     it('blocks new operations when the subscription expired but keeps data readable', async () => {

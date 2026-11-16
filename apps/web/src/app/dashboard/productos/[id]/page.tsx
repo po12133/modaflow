@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowDownToLine, CircleCheck, ImageOff, Pencil, Sparkles } from "lucide-react";
 import { MovementDialog } from "@/components/inventory/movement-dialog";
 import { MovementList } from "@/components/inventory/movement-list";
-import { ArchiveButton } from "@/components/products/archive-button";
+import { DeleteProductButton } from "@/components/products/delete-product-button";
 import { StockBadge } from "@/components/products/stock-badge";
 import { Button } from "@modaflow/ui/components/ui/button";
 import { api } from "@/lib/api";
@@ -25,9 +25,8 @@ export default async function ProductDetailPage({ params, searchParams }: PagePr
   if (!product) notFound();
   const movements = await api<Paginated<Movement>>(`/inventory/movements?productId=${product.id}&pageSize=10`);
 
-  const archived = product.status === "ARCHIVED";
   const canAdmin = me.membership.role === "OWNER" || me.membership.role === "ADMIN";
-  const canOperate = subscription.isOperational && !archived;
+  const canOperate = subscription.isOperational;
   const primary = product.images.find((i) => i.isPrimary) ?? product.images[0];
   const margin =
     product.purchasePrice && Number(product.purchasePrice) > 0
@@ -40,11 +39,6 @@ export default async function ProductDetailPage({ params, searchParams }: PagePr
         <p role="status" className="flex items-center gap-2 rounded-2xl bg-mint/10 px-4 py-3 text-sm font-semibold text-[#0b7a66]">
           <CircleCheck className="size-5" aria-hidden="true" />
           {query.nuevo === "1" ? "Prenda registrada. Ya aparece en tu inventario." : "Cambios guardados."}
-        </p>
-      )}
-      {archived && (
-        <p className="rounded-2xl bg-muted px-4 py-3 text-sm font-semibold text-ink-2">
-          Producto archivado el {formatDate(product.archivedAt!)}. No aparece en el inventario ni cuenta para tu plan.
         </p>
       )}
 
@@ -122,17 +116,15 @@ export default async function ProductDetailPage({ params, searchParams }: PagePr
             </ul>
           )}
 
-          {!archived && canAdmin && <CatalogPublishRow id={product.id} published={product.catalogPublished} enabled={subscription.features.onlineCatalog} />}
+          {canAdmin && <CatalogPublishRow id={product.id} published={product.catalogPublished} enabled={subscription.features.onlineCatalog} />}
 
           <div className="flex flex-wrap gap-2">
-            {!archived && (
-              <Button asChild variant="outline" size="lg" className="h-11">
-                <Link href={`/dashboard/productos/${product.id}/editar`}>
-                  <Pencil aria-hidden="true" /> Editar
-                </Link>
-              </Button>
-            )}
-            {canAdmin && subscription.isOperational && <ArchiveButton productId={product.id} archived={archived} />}
+            <Button asChild variant="outline" size="lg" className="h-11">
+              <Link href={`/dashboard/productos/${product.id}/editar`}>
+                <Pencil aria-hidden="true" /> Editar
+              </Link>
+            </Button>
+            {canAdmin && subscription.isOperational && <DeleteProductButton productId={product.id} name={product.name} />}
           </div>
         </section>
       </div>

@@ -62,17 +62,9 @@ export class ProductsController {
   @Delete(':id')
   @TenantRoles('OWNER', 'ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Archivar producto (borrado lógico; conserva su historial)' })
+  @ApiOperation({ summary: 'Eliminar producto (deja de verse y libera su lugar; queda el registro y su historial de ventas)' })
   @ApiNoContentResponse()
-  async archive(@CurrentTenant() tenant: TenantContext, @Param('id', new ParseUUIDPipe()) id: string) {
-    await this.products.archive(tenant.tenantId, id);
-  }
-
-  @Post(':id/restore')
-  @TenantRoles('OWNER', 'ADMIN')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Restaurar producto archivado (respeta el límite del plan)' })
-  restore(@CurrentTenant() tenant: TenantContext, @Param('id', new ParseUUIDPipe()) id: string) {
-    return this.products.restore(tenant.tenantId, id);
+  async remove(@CurrentTenant() tenant: TenantContext, @CurrentAuth() auth: AuthContext, @Param('id', new ParseUUIDPipe()) id: string) {
+    await this.products.remove(tenant.tenantId, auth.userId, id);
   }
 }

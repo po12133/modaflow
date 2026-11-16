@@ -14,7 +14,6 @@ export interface FilterValues {
   size?: string;
   availability?: string;
   sort?: string;
-  status?: string;
 }
 
 const selectClass = "h-11 w-full rounded-xl border border-input bg-card px-2.5 text-base md:h-10 md:text-sm";
@@ -24,18 +23,16 @@ export function ProductFilters({
   values,
   categories,
   showSort = true,
-  showStatus = true,
 }: {
   values: FilterValues;
   categories?: Category[];
   showSort?: boolean;
-  showStatus?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(values.search ?? "");
-  const [open, setOpen] = useState(Boolean(values.categoryId || values.color || values.size || values.availability || values.status));
+  const [open, setOpen] = useState(Boolean(values.categoryId || values.color || values.size || values.availability));
   const first = useRef(true);
 
   function apply(patch: Partial<FilterValues>) {
@@ -56,7 +53,7 @@ export function ProductFilters({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the search text
   }, [search]);
 
-  const activeFilters = [values.categoryId, values.color, values.size, values.availability, values.status === "archived" ? "x" : ""].filter(Boolean).length;
+  const activeFilters = [values.categoryId, values.color, values.size, values.availability].filter(Boolean).length;
 
   return (
     <div className="mb-4 grid gap-2" aria-busy={pending}>
@@ -117,14 +114,8 @@ export function ProductFilters({
               <option value="name">Nombre (A-Z)</option>
             </select>
           )}
-          {showStatus && (
-            <select aria-label="Estado" className={selectClass} value={values.status ?? "active"} onChange={(e) => apply({ status: e.target.value === "active" ? undefined : e.target.value })}>
-              <option value="active">Activos</option>
-              <option value="archived">Archivados</option>
-            </select>
-          )}
           {activeFilters > 0 && (
-            <button type="button" onClick={() => apply({ categoryId: undefined, color: undefined, size: undefined, availability: undefined, status: undefined })} className="col-span-2 inline-flex h-10 items-center justify-center gap-1 rounded-xl text-sm font-semibold text-primary sm:col-span-1">
+            <button type="button" onClick={() => apply({ categoryId: undefined, color: undefined, size: undefined, availability: undefined })} className="col-span-2 inline-flex h-10 items-center justify-center gap-1 rounded-xl text-sm font-semibold text-primary sm:col-span-1">
               <X className="size-4" aria-hidden="true" /> Quitar filtros
             </button>
           )}

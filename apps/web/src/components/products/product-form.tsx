@@ -196,7 +196,7 @@ export function ProductForm({ mode, product, categories, aiUsage, productLimit, 
       <Alert className="border-amber/40 bg-amber/10">
         <CircleAlert aria-hidden="true" />
         <AlertDescription className="text-ink-2">
-          Alcanzaste el límite de {productLimit.limit} productos de tu plan. Archiva productos que ya no vendes o{" "}
+          Alcanzaste el límite de {productLimit.limit} productos de tu plan. Elimina productos que ya no vendes o{" "}
           <Link href="/dashboard/suscripcion" className="font-bold text-primary underline">
             cambia de plan
           </Link>

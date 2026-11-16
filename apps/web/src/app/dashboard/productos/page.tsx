@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ImageOff, Plus, Tags } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/common";
+import { DeletedNotice } from "@/components/products/deleted-notice";
 import { Pagination } from "@modaflow/ui/components/pagination";
 import { InventoryTabs } from "@/components/products/inventory-tabs";
 import { type FilterValues, ProductFilters } from "@/components/products/product-filters";
@@ -17,7 +18,7 @@ export const metadata: Metadata = { title: "Productos" };
 // Per-request page (reads the session through the API).
 export const instant = false;
 
-const KEYS = ["search", "categoryId", "color", "size", "availability", "sort", "status", "page"] as const;
+const KEYS = ["search", "categoryId", "color", "size", "availability", "sort", "page"] as const;
 
 function pick(params: Record<string, string | string[] | undefined>) {
   const out: Record<string, string | undefined> = {};
@@ -30,7 +31,8 @@ function pick(params: Record<string, string | string[] | undefined>) {
 
 
 export default async function ProductsPage({ searchParams }: PageProps<"/dashboard/productos">) {
-  const params = pick(await searchParams);
+  const raw = await searchParams;
+  const params = pick(raw);
   const qs = new URLSearchParams(Object.entries(params).filter((e): e is [string, string] => Boolean(e[1])));
   qs.set("pageSize", "20");
   const [{ subscription }, categories, list] = await Promise.all([
@@ -43,6 +45,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/dashboa
 
   return (
     <div className="grid gap-1">
+      {raw.eliminado === "1" && <DeletedNotice />}
       <PageHeader
         title="Inventario"
         description={`${formatNumber(used)} de ${formatNumber(limit)} productos de tu plan`}
@@ -59,8 +62,8 @@ export default async function ProductsPage({ searchParams }: PageProps<"/dashboa
 
       {list.items.length === 0 ? (
         <div className="grid place-items-center rounded-2xl border border-dashed bg-card px-6 py-12 text-center">
-          <p className="font-bold">{filtering || params.status ? "No encontramos productos con esos filtros." : "Todavía no registraste prendas."}</p>
-          {!filtering && !params.status && (
+          <p className="font-bold">{filtering ? "No encontramos productos con esos filtros." : "Todavía no registraste prendas."}</p>
+          {!filtering && (
             <Button asChild size="lg" className="mt-4 h-11">
               <Link href="/dashboard/productos/nuevo">Registrar la primera prenda</Link>
             </Button>
@@ -135,9 +138,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/dashboa
                     <td className="px-3 py-2.5"><StockBadge status={p.stockStatus} units={p.totalStock} /></td>
                     <td className="px-4 py-2.5 text-right">
                       <Link href={`/dashboard/productos/${p.id}`} className="font-semibold text-primary">Ver</Link>
-                      {p.status === "ACTIVE" && (
-                        <Link href={`/dashboard/productos/${p.id}/editar`} className="ml-3 font-semibold text-primary">Editar</Link>
-                      )}
+                      <Link href={`/dashboard/productos/${p.id}/editar`} className="ml-3 font-semibold text-primary">Editar</Link>
                     </td>
                   </tr>
                 ))}

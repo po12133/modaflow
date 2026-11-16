@@ -70,7 +70,6 @@ export class SalesService {
       color: q.color,
       size: q.size,
       availability: q.includeOutOfStock ? 'all' : 'in_stock',
-      status: 'active',
     });
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.product.count({ where }),
