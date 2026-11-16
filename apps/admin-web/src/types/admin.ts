@@ -181,3 +181,13 @@ export interface PlatformSettingsView {
   notificationEmails: string[];
   updatedAt: string;
 }
+
+export interface PlanQr {
+  code: string;
+  name: string;
+  priceCents: number;
+  currency: string;
+  billingPeriod: string;
+  isActive: boolean;
+  qrImageUrl: string | null;
+}

@@ -14,7 +14,7 @@ export class AdminEnvironmentVariables extends EnvironmentVariables {
   @Type(() => Number)
   @IsInt()
   @Min(5)
-  @Max(480)
+  @Max(1440)
   ADMIN_SESSION_IDLE_MINUTES: number = 60;
 
   @IsOptional()

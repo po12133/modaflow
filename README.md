@@ -365,7 +365,7 @@ calendario:
 - Una suscripción `SUSPENDED` no admite pagos ni cambios hasta reactivarla. Cada cambio se valida, se guarda en
   `subscription_history` y en la auditoría; cada pago aprobado crea un `subscription_periods` (único por solicitud).
 
-**Pagos manuales** (sin pasarela): QR bancario de ModaFlow (imagen en S3) y transferencia, configurados en
+**Pagos manuales** (sin pasarela): QR bancario de ModaFlow (imagen en S3; uno por plan con su monto exacto, y un QR general para los planes sin QR propio) y transferencia, configurados en
 `/configuracion?tab=pagos` del panel admin. Flujo del suscriptor en `/dashboard/suscripcion`: crear solicitud → ver instrucciones
 con el importe → subir comprobante → confirmar → revisión. El importe lo calcula siempre el servidor desde la versión
 vigente del plan (nunca del navegador). La aprobación es transaccional: bloquea la fila, exige estado `PENDING` y

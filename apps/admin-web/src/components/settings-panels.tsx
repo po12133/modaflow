@@ -1,7 +1,8 @@
 import { STORE_TIMEZONES } from "@modaflow/ui/config/timezones";
-import type { PlatformSettingsView } from "@/types/admin";
+import type { PlanQr, PlatformSettingsView } from "@/types/admin";
 import { dialogField } from "./action-dialog";
-import { QrUpload, SettingsForm } from "./settings-form";
+import { PaymentQrs } from "./payment-qrs";
+import { SettingsForm } from "./settings-form";
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <label className="grid gap-1 text-sm font-semibold">{label}{children}</label>;
 const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className={dialogField} />;
@@ -10,7 +11,7 @@ const Check = ({ name, label, value }: { name: string; label: string; value: boo
   <label className="flex items-center gap-2 text-sm"><input type="checkbox" name={name} defaultChecked={value} className="size-5 accent-[#6c4cf5]" />{label}</label>
 );
 
-export function SettingsPanel({ tab, s, canEdit }: { tab: string; s: PlatformSettingsView; canEdit: boolean }) {
+export function SettingsPanel({ tab, s, canEdit, planQrs = [] }: { tab: string; s: PlatformSettingsView; canEdit: boolean; planQrs?: PlanQr[] }) {
   if (tab === "suscripciones") {
     return (
       <SettingsForm section="subscriptions" disabled={!canEdit}>
@@ -23,7 +24,7 @@ export function SettingsPanel({ tab, s, canEdit }: { tab: string; s: PlatformSet
   }
   if (tab === "pagos") {
     return (
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-start">
         <SettingsForm section="payments" disabled={!canEdit}>
           <Check name="qrEnabled" label="Aceptar QR bancario" value={s.qrEnabled} />
           <Check name="transferEnabled" label="Aceptar transferencia bancaria" value={s.transferEnabled} />
@@ -33,7 +34,7 @@ export function SettingsPanel({ tab, s, canEdit }: { tab: string; s: PlatformSet
           <Field label="Tipo de cuenta"><Input name="accountType" maxLength={40} defaultValue={s.accountType ?? ""} /></Field>
           <Field label="Instrucciones de pago"><Area name="paymentInstructions" maxLength={1000} defaultValue={s.paymentInstructions ?? ""} /></Field>
         </SettingsForm>
-        <QrUpload url={s.qrImageUrl} disabled={!canEdit} />
+        <PaymentQrs general={s.qrImageUrl} plans={planQrs} canEdit={canEdit} />
       </div>
     );
   }

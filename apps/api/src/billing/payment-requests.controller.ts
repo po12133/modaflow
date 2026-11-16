@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentAuth } from '../auth/decorators.js';
@@ -6,7 +6,7 @@ import { AppError } from '../common/app-error.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { imageUpload } from '../images/image-upload.js';
 import { CurrentTenant, TenantRoles, TenantScoped } from '../tenancy/decorators.js';
-import { CreatePaymentRequestDto } from './dto/payments.dto.js';
+import { CreatePaymentRequestDto, PaymentInfoQueryDto } from './dto/payments.dto.js';
 import { PaymentRequestsService } from './payment-requests.service.js';
 import { PaymentInfoService } from './payment-info.service.js';
 
@@ -21,8 +21,8 @@ export class PaymentRequestsController {
 
   @Get('payment-info')
   @ApiOperation({ summary: 'Métodos de pago de ModaFlow disponibles (QR bancario y transferencia) e instrucciones' })
-  info() {
-    return this.settings.paymentInfo();
+  info(@Query() q: PaymentInfoQueryDto) {
+    return this.settings.paymentInfo(q.plan);
   }
 
   @Get('payment-requests')

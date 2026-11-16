@@ -16,13 +16,11 @@ export const instant = false;
 export default async function PaymentPage({ params }: PageProps<"/dashboard/suscripcion/pago/[id]">) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const [request, info] = await Promise.all([
-    getPaymentRequest(id).catch((e: unknown) => {
-      if (e instanceof ApiError && e.status === 404) notFound();
-      throw e;
-    }),
-    getPaymentInfo(),
-  ]);
+  const request = await getPaymentRequest(id).catch((e: unknown) => {
+    if (e instanceof ApiError && e.status === 404) notFound();
+    throw e;
+  });
+  const info = await getPaymentInfo(request.toPlan.code);
   const editable = request.status === "PENDING" && !request.submittedAt;
 
   return (

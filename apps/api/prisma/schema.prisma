@@ -249,6 +249,9 @@ model Plan {
   /// Marketing bullet points shown in plan cards.
   highlights String[]
 
+  /// Bank QR for this plan's exact price; falls back to the general QR in platform settings.
+  paymentQrKey String? @map("payment_qr_key") @db.VarChar(300)
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

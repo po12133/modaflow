@@ -9,7 +9,7 @@ export const uuid = z.string().uuid();
 export const reason = z.string().trim().min(5, { error: "Escribe un motivo (mínimo 5 caracteres)." }).max(500);
 export const text = (f: FormData, k: string) => String(f.get(k) ?? "");
 
-export async function mutate<T = null>(path: string, method: "POST" | "PATCH", body: unknown): Promise<ActionResult<T>> {
+export async function mutate<T = null>(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown): Promise<ActionResult<T>> {
   let data: T;
   try {
     data = await api<T>(path, { method, body });

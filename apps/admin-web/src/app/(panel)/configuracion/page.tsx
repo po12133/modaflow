@@ -6,7 +6,7 @@ import { IntegrationsPanel } from "@/components/integrations/integrations-panel"
 import { SettingsPanel } from "@/components/settings-panels";
 import { INTEGRATION_TABS } from "@/config/integrations";
 import { getMe } from "@/lib/dal";
-import { getIntegrations, getPlatformSettings } from "@/services/admin";
+import { getIntegrations, getPlanQrs, getPlatformSettings } from "@/services/admin";
 
 export const metadata: Metadata = { title: "Configuración" };
 
@@ -45,7 +45,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/configu
       {integration ? (
         <IntegrationsPanel section={integration} view={await getIntegrations()} canEdit={canEdit} account={me?.email ?? ""} />
       ) : (
-        <SettingsPanel key={tab} tab={tab} s={await getPlatformSettings()} canEdit={canEdit} />
+        <SettingsPanel key={tab} tab={tab} s={await getPlatformSettings()} canEdit={canEdit} planQrs={tab === "pagos" ? await getPlanQrs() : []} />
       )}
     </div>
   );

@@ -44,6 +44,7 @@ describe('SaaS administration and billing (e2e, separate admin system)', () => {
       get: (url: string) => a.get(url).set('X-Forwarded-For', ip),
       post: (url: string) => a.post(url).set('X-Forwarded-For', ip),
       patch: (url: string) => a.patch(url).set('X-Forwarded-For', ip),
+      delete: (url: string) => a.delete(url).set('X-Forwarded-For', ip),
     };
   };
   type Agent = ReturnType<typeof agent>;
@@ -137,6 +138,29 @@ describe('SaaS administration and billing (e2e, separate admin system)', () => {
     await changer.a.post('/auth/password').send({ currentPassword: 'mala', newPassword: 'Nueva2026segura' }).expect(400);
     await changer.a.post('/auth/password').send({ currentPassword: STAFF_PASSWORD, newPassword: 'Nueva2026segura' }).expect(204);
     await adminAgent().post('/auth/login').send({ email: changer.email, password: 'Nueva2026segura' }).expect(200);
+  });
+
+  it('shows each plan its own payment QR and falls back to the general one', async () => {
+    await prisma.plan.update({ where: { code: 'premium' }, data: { paymentQrKey: null } });
+    const general = (await prisma.platformSettings.findUniqueOrThrow({ where: { id: 1 } })).qrImageKey;
+    const support = await staff('qrsoporte', 'SUPPORT');
+    await support.a.post('/admin/settings/plan-qrs/premium').attach('file', receipt, 'qr.png').expect(403);
+    await admin.a.post('/admin/settings/plan-qrs/gratis').attach('file', receipt, 'qr.png').expect(404);
+
+    const list = (await admin.a.post('/admin/settings/plan-qrs/premium').attach('file', receipt, 'qr.png').expect(201)).body as { code: string; qrImageUrl: string | null }[];
+    expect(list.find((p) => p.code === 'premium')?.qrImageUrl).toContain('qr-premium-');
+    expect(list.some((p) => p.code === 'gratis')).toBe(false);
+    expect(await prisma.adminAuditLog.count({ where: { action: 'PLAN_PAYMENT_QR_UPDATED' } })).toBeGreaterThan(0);
+
+    const shop = await store('qrplan');
+    expect((await shop.a.get('/subscription/payment-info?plan=premium').expect(200)).body.qrImageUrl).toContain('qr-premium-');
+    const fallback = (await shop.a.get('/subscription/payment-info?plan=basico').expect(200)).body.qrImageUrl as string | null;
+    expect(Boolean(fallback)).toBe(Boolean(general));
+    if (fallback) expect(fallback).not.toContain('qr-premium-');
+
+    await admin.a.delete('/admin/settings/plan-qrs/premium').expect(200);
+    expect((await prisma.plan.findUniqueOrThrow({ where: { code: 'premium' } })).paymentQrKey).toBeNull();
+    expect(Boolean((await shop.a.get('/subscription/payment-info?plan=premium').expect(200)).body.qrImageUrl)).toBe(Boolean(general));
   });
 
   it('payment request → receipt → concurrent approval activates exactly once', async () => {

@@ -3,7 +3,7 @@ import { cache } from "react";
 import { api } from "@/lib/api";
 import { toQuery } from "@modaflow/ui/lib/query";
 import type { Paginated } from "@modaflow/ui/types/common";
-import type { AdminDashboard, AdminPaymentDetail, AdminPaymentPage, AdminPlan, AdminStatistics, AdminSubscriptionRow, AdminTenantDetail, AdminTenantRow, AdminUserRow, AuditRow, PlatformSettingsView } from "@/types/admin";
+import type { AdminDashboard, AdminPaymentDetail, AdminPaymentPage, AdminPlan, AdminStatistics, AdminSubscriptionRow, AdminTenantDetail, AdminTenantRow, AdminUserRow, AuditRow, PlanQr, PlatformSettingsView } from "@/types/admin";
 import type { NotificationPage } from "@modaflow/ui/types/billing";
 import type { IntegrationsView } from "@/types/integrations";
 import type { StaffMember } from "@/types/staff";
@@ -23,5 +23,6 @@ export const getAdminPayment = (id: string) => api<AdminPaymentDetail>(`/admin/p
 export const getAdminAudit = (q: Query) => api<Paginated<AuditRow>>(`/admin/audit${toQuery(q)}`);
 export const getAdminNotifications = (page: number) => api<NotificationPage>(`/admin/notifications?page=${page}`);
 export const getPlatformSettings = () => api<PlatformSettingsView>("/admin/settings");
+export const getPlanQrs = () => api<PlanQr[]>("/admin/settings/plan-qrs");
 export const getStaff = () => api<StaffMember[]>("/admin/staff");
 export const getIntegrations = () => api<IntegrationsView>("/admin/integrations");

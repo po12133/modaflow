@@ -10,6 +10,10 @@ export const SUBSCRIPTION_STATUSES = ['TRIALING', 'ACTIVE', 'EXPIRED', 'SUSPENDE
 
 export { PageQueryDto };
 
+export class PlanCodeParamDto {
+  @ApiProperty({ example: 'basico' }) @IsString() @Matches(/^[a-z0-9-]{2,32}$/) code!: string;
+}
+
 export class TenantsQueryDto extends PageQueryDto {
   @ApiPropertyOptional({ description: 'Nombre, correo del propietario, WhatsApp o ID' }) @IsOptional() @IsString() @MaxLength(120) search?: string;
   @ApiPropertyOptional() @IsOptional() @Matches(/^[a-z0-9_-]{2,32}$/) plan?: string;

@@ -98,3 +98,8 @@ export async function runExpiryAction(): Promise<void> {
 export async function markAdminNotificationReadAction(id: string): Promise<void> {
   if (uuid.safeParse(id).success) await mutate(`/admin/notifications/${id}/read`, "POST", {});
 }
+
+export async function removePlanQrAction(code: string): Promise<Result> {
+  const v = check(z.object({ code: z.string().regex(/^[a-z0-9-]{2,32}$/) }), { code });
+  return v.ok ? mutate(`/admin/settings/plan-qrs/${code}`, "DELETE") : v;
+}
