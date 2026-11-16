@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { CartProvider } from "@/components/storefront/cart/cart-provider";
 import { StoreFooter } from "@/components/storefront/layout/store-footer";
 import { StoreHeader } from "@/components/storefront/layout/store-header";
@@ -7,14 +7,15 @@ import { StoreNav } from "@/components/storefront/layout/store-nav";
 import { StoreTheme } from "@/components/storefront/layout/store-theme";
 import { siteOrigin } from "@/services/site";
 import { getPublicStore } from "@/services/storefront";
+import { typedStoreSlug } from "@/lib/catalog";
 
 export const instant = false;
 
-export async function generateMetadata({ params }: LayoutProps<"/tienda/[slug]">): Promise<Metadata> {
+export async function generateMetadata({ params }: LayoutProps<"/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const [store, origin] = await Promise.all([getPublicStore(slug), siteOrigin()]);
   if (!store) return { title: "Catálogo no disponible", robots: { index: false, follow: false } };
-  const url = `${origin}/tienda/${store.slug}`;
+  const url = `${origin}/${store.slug}`;
   const description = store.description ?? `Catálogo de ${store.name} en ${store.city}. Consulta y pide por WhatsApp.`;
   return {
     metadataBase: new URL(origin),
@@ -27,8 +28,10 @@ export async function generateMetadata({ params }: LayoutProps<"/tienda/[slug]">
   };
 }
 
-export default async function StoreLayout({ children, params }: LayoutProps<"/tienda/[slug]">) {
+export default async function StoreLayout({ children, params }: LayoutProps<"/[slug]">) {
   const { slug } = await params;
+  const typed = typedStoreSlug(slug);
+  if (typed) permanentRedirect(`/${typed}`);
   const store = await getPublicStore(slug);
   if (!store) notFound();
   return (
@@ -37,7 +40,7 @@ export default async function StoreLayout({ children, params }: LayoutProps<"/ti
         <StoreHeader store={store} />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4">{children}</main>
         <StoreFooter store={store} />
-        <StoreNav base={`/tienda/${store.slug}`} variant="bottom" />
+        <StoreNav base={`/${store.slug}`} variant="bottom" />
       </CartProvider>
     </StoreTheme>
   );

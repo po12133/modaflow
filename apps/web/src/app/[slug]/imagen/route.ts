@@ -1,6 +1,6 @@
 import { getPublicStore } from "@/services/storefront";
 
-export async function GET(_request: Request, { params }: RouteContext<"/tienda/[slug]/imagen">) {
+export async function GET(_request: Request, { params }: RouteContext<"/[slug]/imagen">) {
   const { slug } = await params;
   const store = await getPublicStore(slug);
   const url = store?.coverUrl ?? store?.logoUrl;

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Categorías" };
 
 export const instant = false;
 
-export default async function CategoriesPage({ params }: PageProps<"/tienda/[slug]/categorias">) {
+export default async function CategoriesPage({ params }: PageProps<"/[slug]/categorias">) {
   const { slug } = await params;
   const categories = await getPublicCategories(slug);
   return (
@@ -20,7 +20,7 @@ export default async function CategoriesPage({ params }: PageProps<"/tienda/[slu
         <ul className="grid gap-2 sm:grid-cols-2">
           {categories.map((c) => (
             <li key={c.slug}>
-              <Link href={`/tienda/${slug}${catalogQuery({ category: c.slug })}`} className="flex items-center justify-between rounded-2xl border bg-white p-4 font-bold">
+              <Link href={`/${slug}${catalogQuery({ category: c.slug })}`} className="flex items-center justify-between rounded-2xl border bg-white p-4 font-bold">
                 <span>
                   {c.name}
                   <span className="block text-xs font-semibold text-muted-foreground">{c.products} {c.products === 1 ? "prenda" : "prendas"}</span>

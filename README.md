@@ -301,10 +301,10 @@ Web: `src/types/reports.ts` (tipos), `src/config/reports.ts` (declaraciones), `s
 
 ## Arquitectura (Etapa 5: catálogo online, pedidos por WhatsApp y QR)
 
-**Catálogo público** en `/tienda/{slug}` (sin registro): portada, logotipo, descripción, ciudad, botón de WhatsApp,
+**Catálogo público** en `/{slug}`, directo en el dominio (los enlaces antiguos `/tienda/{slug}` redirigen; mayúsculas, espacios y tildes escritos a mano se corrigen solos; los nombres de páginas del sistema están reservados) (sin registro): portada, logotipo, descripción, ciudad, botón de WhatsApp,
 búsqueda (nombre, categoría, color, talla, etiquetas), filtros (categoría, talla, color, rango de precio,
 disponibilidad), orden (recientes, precio, nombre) y paginación en el backend (24 por página). Detalle en
-`/tienda/{slug}/producto/{productSlug}` con galería (miniaturas y vista ampliada), variantes disponibles y cantidad
+`/{slug}/producto/{productSlug}` con galería (miniaturas y vista ampliada), variantes disponibles y cantidad
 limitada al stock informado. También `/categorias`, `/carrito` e `/info`. Plantilla única adaptada con el color
 principal y secundario de cada tienda (MioShop es solo un ejemplo de personalización).
 
@@ -331,7 +331,7 @@ pública y en cada cambio. Si la suscripción vence o el plan no lo incluye, el 
 conservan productos, fotos, publicación y configuración.
 
 **SEO**: metadatos dinámicos, URL canónica y Open Graph/Twitter por tienda y producto (imagen estable
-`/tienda/{slug}/imagen` y `/producto/{slug}/imagen` que redirige a la foto firmada), `sitemap.xml` dinámico solo con
+`/{slug}/imagen` y `/producto/{slug}/imagen` que redirige a la foto firmada), `sitemap.xml` dinámico solo con
 catálogos disponibles y productos publicados, y `robots.txt` que excluye panel, API, boletas y carrito.
 
 **Rendimiento**: consultas paginadas con índices (`products(tenant_id, catalog_published, status, created_at)`, slug

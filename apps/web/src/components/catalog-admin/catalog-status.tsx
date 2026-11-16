@@ -36,7 +36,7 @@ export function CatalogUpsell({ operational }: { operational: boolean }) {
           : "Tu suscripción no está activa: el catálogo público está desactivado. Tus productos y configuración siguen guardados."}
       </p>
       <ul className="grid gap-1 text-sm text-ink-2 sm:grid-cols-2">
-        <li>• Enlace propio: /tienda/tu-tienda</li>
+        <li>• Enlace propio y corto: /tu-tienda</li>
         <li>• Carrito y pedidos por WhatsApp</li>
         <li>• Código QR para compartir</li>
         <li>• Fotos, tallas y colores del inventario real</li>

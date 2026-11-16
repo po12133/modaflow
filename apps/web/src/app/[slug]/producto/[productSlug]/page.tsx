@@ -10,13 +10,13 @@ import { getPublicProduct, getPublicStore } from "@/services/storefront";
 
 export const instant = false;
 
-type Props = PageProps<"/tienda/[slug]/producto/[productSlug]">;
+type Props = PageProps<"/[slug]/producto/[productSlug]">;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, productSlug } = await params;
   const [store, product, origin] = await Promise.all([getPublicStore(slug), getPublicProduct(slug, productSlug), siteOrigin()]);
   if (!store || !product) return { title: "Prenda no disponible", robots: { index: false, follow: false } };
-  const url = `${origin}/tienda/${store.slug}/producto/${product.slug}`;
+  const url = `${origin}/${store.slug}/producto/${product.slug}`;
   const description = `${formatMoney(product.price)} · ${product.available ? "Disponible" : "Agotado"}${product.description ? ` · ${product.description}` : ""}`.slice(0, 200);
   return {
     title: product.name,
@@ -32,7 +32,7 @@ export default async function ProductPage({ params }: Props) {
   const { slug, productSlug } = await params;
   const [store, product, origin] = await Promise.all([getPublicStore(slug), getPublicProduct(slug, productSlug), siteOrigin()]);
   if (!store || !product) notFound();
-  const base = `/tienda/${store.slug}`;
+  const base = `/${store.slug}`;
 
   return (
     <article className="grid gap-5 lg:grid-cols-2 lg:gap-8">

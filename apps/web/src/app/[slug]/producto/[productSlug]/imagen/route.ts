@@ -1,6 +1,6 @@
 import { getPublicProduct } from "@/services/storefront";
 
-export async function GET(_request: Request, { params }: RouteContext<"/tienda/[slug]/producto/[productSlug]/imagen">) {
+export async function GET(_request: Request, { params }: RouteContext<"/[slug]/producto/[productSlug]/imagen">) {
   const { slug, productSlug } = await params;
   const product = await getPublicProduct(slug, productSlug);
   const url = product?.images[0]?.url;

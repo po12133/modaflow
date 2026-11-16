@@ -12,6 +12,8 @@ describe('storefront rules', () => {
     expect(storeSlugProblem('ab')).toBe('length');
     expect(storeSlugProblem('dashboard')).toBe('reserved');
     expect(storeSlugProblem('tienda')).toBe('reserved');
+    expect(storeSlugProblem('login')).toBe('reserved');
+    expect(storeSlugProblem('ventas')).toBe('reserved');
   });
 
   it('builds product slugs from name and SKU', () => {

@@ -11,14 +11,14 @@ export const instant = false;
 
 const KEYS = ["search", "category", "size", "color", "minPrice", "maxPrice", "availability", "sort"] as const;
 
-export default async function StorePage({ params, searchParams }: PageProps<"/tienda/[slug]">) {
+export default async function StorePage({ params, searchParams }: PageProps<"/[slug]">) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const store = await getPublicStore(slug);
   if (!store) notFound();
   const filters = Object.fromEntries(KEYS.map((k) => [k, one(sp[k])])) as Record<(typeof KEYS)[number], string | undefined>;
   const page = Math.max(1, Number(one(sp.page)) || 1);
   const [categories, products] = await Promise.all([getPublicCategories(slug), getPublicProducts(slug, { ...filters, page, pageSize: CATALOG_PAGE_SIZE })]);
-  const base = `/tienda/${store.slug}`;
+  const base = `/${store.slug}`;
   const filtered = KEYS.some((k) => k !== "sort" && filters[k]);
 
   return (

@@ -8,6 +8,7 @@ import { TRIAL_PLAN_CODE } from '../plans/plan-catalog.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { STORE_SELECT } from '../stores/stores.service.js';
 import type { StoreFieldsDto } from '../stores/dto.js';
+import { storeSlugProblem } from '../storefront/storefront-rules.js';
 import { slugify } from '../stores/store-fields.js';
 import { addDays } from '../subscriptions/entitlement-rules.js';
 import { latestVersion } from '../billing/plan-versions.js';
@@ -111,6 +112,7 @@ export class OnboardingService {
     const base = slugify(name);
     for (let attempt = 0; attempt < 5; attempt++) {
       const candidate = attempt === 0 ? base : `${base.slice(0, 52)}-${generateToken(4).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6)}`;
+      if (storeSlugProblem(candidate)) continue;
       const taken = await tx.store.findUnique({ where: { slug: candidate }, select: { id: true } });
       if (!taken) return candidate;
     }

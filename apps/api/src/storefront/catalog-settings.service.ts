@@ -50,7 +50,7 @@ export class CatalogSettingsService {
       status: settings.status,
       logoUrl: logo,
       coverUrl: cover,
-      publicPath: `/tienda/${store.slug}`,
+      publicPath: `/${store.slug}`,
       planAllowsCatalog: online,
       isPublic: online && settings.status === 'PUBLISHED',
     };

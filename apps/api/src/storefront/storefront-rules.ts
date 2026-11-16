@@ -6,10 +6,12 @@ export const MAX_LINE_QUANTITY = 10;
 export const PUBLIC_STOCK_CAP = 10;
 
 export const RESERVED_SLUGS = new Set([
-  'admin', 'api', 'app', 'ayuda', 'blog', 'boleta', 'carrito', 'catalogo', 'contacto', 'cuenta', 'dashboard', 'docs',
-  'login', 'logout', 'mail', 'modaflow', 'nueva', 'onboarding', 'panel', 'planes', 'precios', 'privacidad', 'registro',
-  'robots', 'sitemap', 'soporte', 'static', 'status', 'terminos', 'tienda', 'tiendas', 'www', 'recuperar-contrasena',
-  'restablecer-contrasena',
+  'admin', 'api', 'app', 'apple-icon', 'auth', 'ayuda', 'blog', 'boleta', 'carrito', 'catalogo', 'categorias', 'configuracion',
+  'consumo', 'contacto', 'cuenta', 'dashboard', 'docs', 'favicon', 'icon', 'imagen', 'info', 'inicio', 'inventario', 'login',
+  'logout', 'mail', 'manifest', 'mas', 'modaflow', 'negocios', 'notificaciones', 'nueva', 'onboarding', 'opengraph-image',
+  'panel', 'planes', 'precios', 'privacidad', 'producto', 'productos', 'recuperar-contrasena', 'registro', 'reportes',
+  'restablecer-contrasena', 'robots', 'sitemap', 'soporte', 'static', 'status', 'suscripcion', 'terminos', 'tienda', 'tiendas',
+  'vender', 'ventas', 'www',
 ]);
 
 export type SlugProblem = 'format' | 'length' | 'reserved';

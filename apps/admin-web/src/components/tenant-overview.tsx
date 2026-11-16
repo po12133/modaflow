@@ -47,7 +47,7 @@ export function TenantOverview({ tenant }: { tenant: AdminTenantDetail }) {
           {tenant.stores.map((s) => (
             <li key={s.id} className="py-2">
               <b>{s.name}</b>
-              <span className="block text-xs text-muted-foreground">{s.city} · {s.whatsapp} · /tienda/{s.slug}</span>
+              <span className="block text-xs text-muted-foreground">{s.city} · {s.whatsapp} · /{s.slug}</span>
             </li>
           ))}
         </ul>

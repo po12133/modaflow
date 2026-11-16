@@ -98,6 +98,15 @@ describe('Online catalog (e2e)', () => {
       expect((await other.a.patch('/catalog/settings').send({ slug }).expect(409)).body.code).toBe('SLUG_TAKEN');
       expect((await other.a.get(`/catalog/slug-availability?slug=${slug}`).expect(200)).body.available).toBe(false);
       expect((await s.a.get(`/catalog/slug-availability?slug=${slug}`).expect(200)).body.available).toBe(true);
+      expect((await s.a.get('/catalog/settings').expect(200)).body.publicPath).toBe(`/${slug}`);
+    });
+
+    it('never gives a new store an address that collides with a system page', async () => {
+      const a = agent();
+      await a.post('/auth/register').send({ name: 'Login Pérez', email: `login.${run}@e2e.test`, password: PASSWORD }).expect(201);
+      await a.post('/onboarding').send({ name: 'Login', whatsapp: `7${Math.floor(1_000_000 + Math.random() * 8_999_999)}`, city: 'La Paz', primaryColor: '#E8457E' }).expect(201);
+      const { slug: given } = (await a.get('/catalog/settings').expect(200)).body as { slug: string };
+      expect(given).toMatch(/^login-[a-z0-9]+$/);
     });
 
     it('shows only published active products, without private data, to anonymous buyers', async () => {

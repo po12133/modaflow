@@ -59,3 +59,14 @@ export function readableText(hex: string): string {
   const luminance = 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
   return luminance > 0.4 ? "#16132b" : "#ffffff";
 }
+
+export function typedStoreSlug(raw: string): string | null {
+  let value: string;
+  try {
+    value = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  const typed = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+  return typed !== value && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(typed) ? typed : null;
+}

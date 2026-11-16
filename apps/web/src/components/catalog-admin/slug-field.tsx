@@ -22,13 +22,13 @@ export function SlugField({ defaultValue, origin, state }: { defaultValue: strin
       ? check.available
         ? "Disponible."
         : check.message ?? "No disponible."
-      : `${origin}/tienda/${value || "tu-tienda"}`;
+      : `${origin}/${value || "tu-tienda"}`;
 
   return (
     <Field label="Dirección pública" name="slug" state={state} hint={hint}>
       {(a11y) => (
         <div className="flex items-center rounded-xl border border-input bg-card focus-within:ring-2 focus-within:ring-ring">
-          <span className="pl-3 text-sm text-muted-foreground">/tienda/</span>
+          <span className="pl-3 text-sm text-muted-foreground">/</span>
           <Input
             {...a11y}
             name="slug"

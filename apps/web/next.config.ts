@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
   ...(pollIntervalMs ? { watchOptions: { pollIntervalMs } } : {}),
   cacheComponents: true,
   partialPrefetching: true,
+  async redirects() {
+    return [{ source: "/tienda/:path*", destination: "/:path*", permanent: true }];
+  },
   async headers() {
     return [
       {

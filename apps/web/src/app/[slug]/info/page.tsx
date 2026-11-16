@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Información de la tienda" };
 
 export const instant = false;
 
-export default async function StoreInfoPage({ params }: PageProps<"/tienda/[slug]/info">) {
+export default async function StoreInfoPage({ params }: PageProps<"/[slug]/info">) {
   const { slug } = await params;
   const store = await getPublicStore(slug);
   if (!store) notFound();

@@ -9,8 +9,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const data = await getSitemapData();
     return [
       ...home,
-      ...data.stores.map((s) => ({ url: `${origin}/tienda/${s.slug}`, lastModified: s.updatedAt, changeFrequency: "daily" as const, priority: 0.8 })),
-      ...data.products.map((p) => ({ url: `${origin}/tienda/${p.store}/producto/${p.slug}`, lastModified: p.updatedAt, changeFrequency: "daily" as const, priority: 0.6 })),
+      ...data.stores.map((s) => ({ url: `${origin}/${s.slug}`, lastModified: s.updatedAt, changeFrequency: "daily" as const, priority: 0.8 })),
+      ...data.products.map((p) => ({ url: `${origin}/${p.store}/producto/${p.slug}`, lastModified: p.updatedAt, changeFrequency: "daily" as const, priority: 0.6 })),
     ];
   } catch {
     return home;

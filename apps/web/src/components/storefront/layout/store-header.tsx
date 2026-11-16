@@ -19,7 +19,7 @@ export function StoreLogo({ store, className = "size-11" }: { store: PublicStore
 }
 
 export function StoreHeader({ store }: { store: PublicStore }) {
-  const base = `/tienda/${store.slug}`;
+  const base = `/${store.slug}`;
   return (
     <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5">
