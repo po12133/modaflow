@@ -1226,6 +1226,7 @@ model Staff {
   planVersions        PlanVersion[]
   settingsUpdates     PlatformSettings[]
   integrationUpdates  IntegrationSettings[]
+  backups             Backup[]
 
   @@map("staff")
   @@schema("admin")
@@ -1246,6 +1247,43 @@ model StaffSession {
   @@index([staffId])
   @@index([expiresAt])
   @@map("staff_sessions")
+  @@schema("admin")
+}
+
+enum BackupSource {
+  CREATED
+  IMPORTED
+
+  @@schema("admin")
+}
+
+enum BackupStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+
+  @@schema("admin")
+}
+
+/// Encrypted full backup (database + file inventory) stored in the configured S3 bucket.
+model Backup {
+  id            String       @id @default(uuid()) @db.Uuid
+  status        BackupStatus @default(RUNNING)
+  source        BackupSource @default(CREATED)
+  storageKey    String?      @map("storage_key") @db.VarChar(300)
+  sizeBytes     BigInt?      @map("size_bytes")
+  databaseBytes BigInt?      @map("database_bytes")
+  fileCount     Int?         @map("file_count")
+  filesBytes    BigInt?      @map("files_bytes")
+  errorMessage  String?      @map("error_message") @db.VarChar(500)
+  createdById   String       @map("created_by_id") @db.Uuid
+  startedAt     DateTime     @default(now()) @map("started_at") @db.Timestamptz(3)
+  finishedAt    DateTime?    @map("finished_at") @db.Timestamptz(3)
+
+  createdBy Staff @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([startedAt])
+  @@map("backups")
   @@schema("admin")
 }
 

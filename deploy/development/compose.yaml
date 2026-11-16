@@ -73,6 +73,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-modaflow}:${POSTGRES_PASSWORD:-modaflow_dev_password}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:-modaflow_app_dev_password}
       ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD:-modaflow_admin_dev_password}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:-modaflow_backup_dev_password}
     volumes:
       - ../../apps/api/src:/app/apps/api/src
       - ../../apps/api/prisma:/app/apps/api/prisma
@@ -170,6 +171,8 @@ services:
       ADMIN_WEB_URL: ${ADMIN_WEB_URL:-http://localhost:3002}
       ADMIN_SESSION_TTL_HOURS: ${ADMIN_SESSION_TTL_HOURS:-8}
       ADMIN_SESSION_IDLE_MINUTES: ${ADMIN_SESSION_IDLE_MINUTES:-60}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:-modaflow_backup_dev_password}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
       SWAGGER_PATH: ${SWAGGER_PATH:-docs}
       S3_ENDPOINT: http://storage:8333

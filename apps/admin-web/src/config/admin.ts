@@ -1,4 +1,4 @@
-import { BarChart3, Gauge, Bell, Building2, ClipboardList, CreditCard, LayoutDashboard, Layers, Receipt, Settings, UserCog, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, DatabaseBackup, Gauge, Bell, Building2, ClipboardList, CreditCard, LayoutDashboard, Layers, Receipt, Settings, UserCog, Users, type LucideIcon } from "lucide-react";
 
 export const ADMIN_NAV: [string, string, LucideIcon][] = [
   ["/", "Dashboard", LayoutDashboard],
@@ -12,6 +12,7 @@ export const ADMIN_NAV: [string, string, LucideIcon][] = [
   ["/notificaciones", "Notificaciones", Bell],
   ["/auditoria", "Auditoría", ClipboardList],
   ["/equipo", "Equipo", UserCog],
+  ["/backups", "Backups", DatabaseBackup],
   ["/configuracion", "Configuración", Settings],
 ];
 

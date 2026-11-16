@@ -26,7 +26,8 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
     "staff": "tsx src/cli/staff.ts",
-    "db:roles": "tsx src/cli/provision-db-roles.ts"
+    "db:roles": "tsx src/cli/provision-db-roles.ts",
+    "backup": "node dist/cli/backup.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

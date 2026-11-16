@@ -3,6 +3,7 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -122,6 +123,27 @@ export class StorageService implements OnModuleInit {
     const state = this.state();
     if (!state) return null;
     return getSignedUrl(state.signer, new GetObjectCommand({ Bucket: state.bucket, Key: state.prefix + key }), { expiresIn: this.signedUrlTtl });
+  }
+
+  async downloadUrl(key: string, fileName: string): Promise<string | null> {
+    const state = this.state();
+    if (!state) return null;
+    const command = new GetObjectCommand({ Bucket: state.bucket, Key: state.prefix + key, ResponseContentDisposition: `attachment; filename="${fileName}"` });
+    return getSignedUrl(state.signer, command, { expiresIn: 300 });
+  }
+
+  async listAll(): Promise<{ prefix: string; items: { key: string; size: number; lastModified: string | null }[] }> {
+    const { client, bucket, prefix } = this.require();
+    const items: { key: string; size: number; lastModified: string | null }[] = [];
+    let token: string | undefined;
+    do {
+      const page = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix || undefined, ContinuationToken: token }));
+      for (const o of page.Contents ?? []) {
+        if (o.Key) items.push({ key: o.Key.slice(prefix.length), size: o.Size ?? 0, lastModified: o.LastModified?.toISOString() ?? null });
+      }
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
+    return { prefix, items };
   }
 
   async ping(): Promise<boolean> {

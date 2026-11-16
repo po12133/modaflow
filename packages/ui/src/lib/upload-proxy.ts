@@ -8,6 +8,10 @@ export interface UploadTarget {
   apiUrl: string;
   cookie: string;
   path: string;
+  maxBytes?: number;
+  missingMessage?: string;
+  tooLargeMessage?: string;
+  fileName?: string;
 }
 
 function error(status: number, message: string, code = "UPLOAD_FAILED") {
@@ -25,14 +29,14 @@ export async function forwardImageUpload(request: NextRequest, target: UploadTar
   try {
     form = await request.formData();
   } catch {
-    return error(400, "No se recibió la imagen.");
+    return error(400, target.missingMessage ?? "No se recibió la imagen.");
   }
   const file = form.get("file");
-  if (!(file instanceof File)) return error(400, "No se recibió la imagen.");
-  if (file.size > MAX_BYTES) return error(413, "La imagen supera los 10 MB.", "INVALID_IMAGE");
+  if (!(file instanceof File)) return error(400, target.missingMessage ?? "No se recibió la imagen.");
+  if (file.size > (target.maxBytes ?? MAX_BYTES)) return error(413, target.tooLargeMessage ?? "La imagen supera los 10 MB.", "INVALID_IMAGE");
 
   const forward = new FormData();
-  forward.append("file", file, file.name || "imagen.jpg");
+  forward.append("file", file, file.name || target.fileName || "imagen.jpg");
   const headers = new Headers({ cookie: `${target.cookie}=${encodeURIComponent(token)}`, accept: "application/json" });
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);

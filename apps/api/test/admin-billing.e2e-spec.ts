@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AdminAppModule } from './../src/admin/admin-app.module.js';
+import { encryptBackup, packBackup } from './../src/admin/backups/backup-format.js';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { generateToken, sha256 } from './../src/common/crypto.js';
@@ -138,6 +139,34 @@ describe('SaaS administration and billing (e2e, separate admin system)', () => {
     await changer.a.post('/auth/password').send({ currentPassword: 'mala', newPassword: 'Nueva2026segura' }).expect(400);
     await changer.a.post('/auth/password').send({ currentPassword: STAFF_PASSWORD, newPassword: 'Nueva2026segura' }).expect(204);
     await adminAgent().post('/auth/login').send({ email: changer.email, password: 'Nueva2026segura' }).expect(200);
+  });
+
+  it('imports encrypted backups into S3, downloads and deletes them; only superadmins act', async () => {
+    const support = await staff('bksoporte', 'SUPPORT');
+    const status = (await support.a.get('/admin/backups').expect(200)).body;
+    expect(status.ready).toMatchObject({ database: false, encryption: true });
+    await support.a.post('/admin/backups').expect(403);
+    expect((await admin.a.post('/admin/backups').expect(503)).body.code).toBe('BACKUP_NOT_CONFIGURED');
+
+    const manifest = { format: 1 as const, createdAt: '2026-11-10T04:00:00.000Z', createdBy: 'otro@equipo.test', database: { name: 'modaflow', bytes: 4, tool: 'pg_dump 18' }, files: { count: 2, bytes: 300, prefix: '', items: [] } };
+    const file = encryptBackup(packBackup(manifest, Buffer.from('DUMP')), process.env['BACKUP_ENCRYPTION_KEY']!);
+    expect((await admin.a.post('/admin/backups/import').attach('file', Buffer.from('no soy un backup'), 'x.mfbackup').expect(400)).body.code).toBe('INVALID_BACKUP');
+    await support.a.post('/admin/backups/import').attach('file', file, 'b.mfbackup').expect(403);
+    const { id } = (await admin.a.post('/admin/backups/import').attach('file', file, 'b.mfbackup').expect(201)).body as { id: string };
+
+    const item = ((await admin.a.get('/admin/backups').expect(200)).body.items as { id: string }[]).find((b) => b.id === id);
+    expect(item).toMatchObject({ status: 'COMPLETED', source: 'IMPORTED', downloadable: true, sizeBytes: file.length, fileCount: 2, startedAt: manifest.createdAt });
+    const row = await prisma.backup.findUniqueOrThrow({ where: { id } });
+    expect(row.storageKey).toBe(`backups/${id}.mfbackup`);
+
+    const link = (await admin.a.post(`/admin/backups/${id}/download`).expect(200)).body as { url: string; fileName: string };
+    expect(link.fileName).toBe('modaflow-backup-20261110-0400.mfbackup');
+    const stored = Buffer.from(await (await fetch(link.url)).arrayBuffer());
+    expect(stored.equals(file)).toBe(true);
+
+    await admin.a.delete(`/admin/backups/${id}`).expect(204);
+    expect(await prisma.backup.count({ where: { id } })).toBe(0);
+    expect(await prisma.adminAuditLog.count({ where: { entityId: id, action: { in: ['BACKUP_IMPORTED', 'BACKUP_DOWNLOADED', 'BACKUP_DELETED'] } } })).toBe(3);
   });
 
   it('shows each plan its own payment QR and falls back to the general one', async () => {

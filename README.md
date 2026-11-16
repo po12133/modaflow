@@ -491,6 +491,41 @@ producto, S3, la llave de Claude y el SMTP se pueden cambiar desde el panel en t
 `GET /admin/integrations`, `PATCH /admin/integrations/storage|ai|email`, `POST /admin/integrations/storage|ai|email/test`
 y `POST /admin/integrations/:section/reset`.
 
+## Backups
+
+**Panel admin → Backups** (`/backups`). Un backup es **un solo archivo cifrado** (`.mfbackup`, AES-256-GCM) con:
+
+- la base de datos completa (`pg_dump`, esquemas `public` y `admin`: suscriptores y panel admin);
+- un manifiesto con fecha, autor e **inventario de los archivos del bucket** (fotos, logos, comprobantes, QR).
+
+Todo backup —creado o **importado**— se guarda en el S3 configurado (`backups/{id}.mfbackup`). Solo el superadministrador
+crea, importa, descarga o elimina (todo queda en auditoría); soporte ve la lista. La descarga es un enlace temporal (5 min)
+y el archivo sigue cifrado: no expone contraseñas ni hashes. Importar verifica que el archivo sea de ModaFlow y que se
+cifró con la clave de este servidor. Los backups se crean manualmente con **Crear backup ahora**.
+
+Variables (solo en el servidor, `admin-api` y `migrate`):
+
+| Variable | Para qué |
+|---|---|
+| `BACKUP_DB_PASSWORD` | Contraseña del rol `modaflow_backup` (solo lectura, `pg_read_all_data`). Mínimo 16 caracteres. |
+| `BACKUP_ENCRYPTION_KEY` | Clave de cifrado: `openssl rand -hex 32`. **Guarda una copia fuera del servidor**: sin ella ningún backup se puede abrir. |
+
+Los archivos del bucket no se copian (duplicaría el espacio): protégelos activando el **versionado del bucket** en Hetzner.
+
+**Restaurar** (reemplaza TODOS los datos; solo desde el servidor, nunca desde el panel):
+
+```bash
+# 1. Detén api y admin-api para que nadie escriba durante la restauración.
+# 2. En el contenedor admin-api (Coolify → admin-api → Terminal), descifra el backup elegido (id del panel o archivo):
+node dist/cli/backup.js open <id-del-backup> /tmp/restaurar
+# 3. Restaura con el usuario dueño de la base (POSTGRES_USER / POSTGRES_PASSWORD):
+PGPASSWORD=... pg_restore -h postgres -U modaflow -d modaflow --clean --if-exists --exit-on-error /tmp/restaurar/database.dump
+# 4. Borra /tmp/restaurar, vuelve a levantar api y admin-api y ejecuta el servicio migrate (roles y migraciones).
+```
+
+Para probar un backup sin tocar los datos, restáuralo en una base aparte (`CREATE DATABASE modaflow_prueba`) y elimínala
+al terminar.
+
 ## Desarrollo con Docker (recomendado)
 
 Desde la raíz del repositorio:

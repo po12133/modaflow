@@ -73,7 +73,12 @@ export type AppErrorCode =
   | 'SUBSCRIPTION_SUSPENDED'
   | 'INVALID_TRANSITION'
   | 'PLAN_NOT_PAYABLE'
-  | 'NOTIFICATION_NOT_FOUND';
+  | 'NOTIFICATION_NOT_FOUND'
+  | 'BACKUP_NOT_CONFIGURED'
+  | 'BACKUP_RUNNING'
+  | 'BACKUP_NOT_FOUND'
+  | 'BACKUP_NOT_READY'
+  | 'INVALID_BACKUP';
 
 export class AppError extends HttpException {
   constructor(

@@ -58,6 +58,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-modaflow}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-modaflow}?schema=public
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}
       ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD:?ADMIN_DB_PASSWORD is required}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -143,6 +144,8 @@ services:
       ADMIN_WEB_URL: ${ADMIN_WEB_URL:-https://admin.staging.modaflow.amicornios.com}
       ADMIN_SESSION_TTL_HOURS: ${ADMIN_SESSION_TTL_HOURS:-8}
       ADMIN_SESSION_IDLE_MINUTES: ${ADMIN_SESSION_IDLE_MINUTES:-60}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:-}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
       SWAGGER_ENABLED: "false"
       SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
       S3_ENDPOINT: ${S3_ENDPOINT:-}

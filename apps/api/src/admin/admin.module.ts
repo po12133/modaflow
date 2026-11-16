@@ -3,6 +3,8 @@ import { NotificationsCoreModule } from '../notifications/notifications-core.mod
 import { AdminAccountsController } from './admin-accounts.controller.js';
 import { AdminBillingController } from './admin-billing.controller.js';
 import { AdminPaymentQrController } from './admin-payment-qr.controller.js';
+import { AdminBackupsController } from './backups/admin-backups.controller.js';
+import { BackupsService } from './backups/backups.service.js';
 import { AdminDashboardService } from './admin-dashboard.service.js';
 import { AdminOverviewController } from './admin-overview.controller.js';
 import { AdminPlansService } from './admin-plans.service.js';
@@ -24,7 +26,7 @@ import { AdminConsumptionController } from './consumption/admin-consumption.cont
 import { AdminConsumptionService } from './consumption/admin-consumption.service.js';
 @Module({
   imports: [AuditModule, AdminBillingModule, NotificationsCoreModule],
-  controllers: [AdminConsumptionController, AdminOverviewController, AdminAccountsController, AdminBillingController, AdminPaymentQrController, AdminStaffController, AdminIntegrationsController],
-  providers: [AdminConsumptionService, StaffRolesGuard, SubscriptionExpiryService, AdminDashboardService, AdminStatsService, AdminTenantsService, AdminUsersService, AdminPlansService, AdminSubscriptionsService, AdminStaffService, AdminIntegrationsService, PasswordService],
+  controllers: [AdminConsumptionController, AdminOverviewController, AdminAccountsController, AdminBillingController, AdminPaymentQrController, AdminBackupsController, AdminStaffController, AdminIntegrationsController],
+  providers: [BackupsService, AdminConsumptionService, StaffRolesGuard, SubscriptionExpiryService, AdminDashboardService, AdminStatsService, AdminTenantsService, AdminUsersService, AdminPlansService, AdminSubscriptionsService, AdminStaffService, AdminIntegrationsService, PasswordService],
 })
 export class AdminModule {}

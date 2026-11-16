@@ -11,6 +11,8 @@ ARG NODE_IMAGE=node:24-alpine
 
 # ---------- base ----------
 FROM ${NODE_IMAGE} AS base
+# pg_dump for the admin backups (same major version as the PostgreSQL server).
+RUN apk add --no-cache postgresql18-client
 # npm 11 is required: npm 10 fails to resolve this workspace tree and does not
 # understand the "allowScripts" policy in the root package.json.
 RUN npm install -g npm@11.21.2 && npm cache clean --force
@@ -60,6 +62,7 @@ RUN npm ci --workspace @modaflow/api --include-workspace-root=false --omit=dev \
 
 # ---------- runner ----------
 FROM ${NODE_IMAGE} AS runner
+RUN apk add --no-cache postgresql18-client
 ENV NODE_ENV=production \
     PORT=3001 \
     NPM_CONFIG_UPDATE_NOTIFIER=false \

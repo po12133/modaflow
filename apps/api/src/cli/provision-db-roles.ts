@@ -1,8 +1,9 @@
 import pg from 'pg';
 
 const ROLES = [
-  ['modaflow_app', 'APP_DB_PASSWORD'],
-  ['modaflow_admin', 'ADMIN_DB_PASSWORD'],
+  ['modaflow_app', 'APP_DB_PASSWORD', true],
+  ['modaflow_admin', 'ADMIN_DB_PASSWORD', true],
+  ['modaflow_backup', 'BACKUP_DB_PASSWORD', false],
 ] as const;
 const MIN_LENGTH = 16;
 
@@ -13,10 +14,10 @@ async function main() {
   const client = new pg.Client({ connectionString });
   await client.connect();
   try {
-    for (const [role, variable] of ROLES) {
+    for (const [role, variable, required] of ROLES) {
       const password = process.env[variable];
       if (!password) {
-        if (production) throw new Error(`${variable} is required in production`);
+        if (production && required) throw new Error(`${variable} is required in production`);
         console.warn(`${variable} is not set: ${role} keeps login disabled.`);
         continue;
       }
