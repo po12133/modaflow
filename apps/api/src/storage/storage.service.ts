@@ -86,7 +86,7 @@ export class StorageService implements OnModuleInit {
       throw new AppError(
         HttpStatus.SERVICE_UNAVAILABLE,
         'STORAGE_NOT_CONFIGURED',
-        'El almacenamiento de fotografías todavía no está configurado. Puedes registrar la prenda sin fotos.',
+        'La subida de archivos no está disponible: falta configurar el almacenamiento S3 en el panel de administración.',
       );
     }
     return state;
