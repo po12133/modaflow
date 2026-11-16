@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { CartProvider } from "@/components/storefront/cart/cart-provider";
 import { StoreFooter } from "@/components/storefront/layout/store-footer";
 import { StoreHeader } from "@/components/storefront/layout/store-header";
@@ -34,6 +34,7 @@ export default async function StoreLayout({ children, params }: LayoutProps<"/[s
   if (typed) permanentRedirect(`/${typed}`);
   const store = await getPublicStore(slug);
   if (!store) notFound();
+  if (store.slug !== slug) redirect(`/${store.slug}`);
   return (
     <StoreTheme store={store}>
       <CartProvider slug={store.slug}>

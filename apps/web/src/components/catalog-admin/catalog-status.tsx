@@ -6,7 +6,9 @@ import type { CatalogSettings } from "@/types/catalog";
 import { CatalogQr } from "./catalog-qr";
 import { ShareLink } from "./share-link";
 
-export function CatalogStatus({ settings, url }: { settings: CatalogSettings; url: string }) {
+export function CatalogStatus({ settings, origin }: { settings: CatalogSettings; origin: string }) {
+  const url = `${origin}${settings.publicPath}`;
+  const permanent = `${origin}${settings.permanentPath}`;
   const label = !settings.planAllowsCatalog ? "No disponible en tu plan" : settings.status === "HIDDEN" ? "Oculto" : "Publicado";
   return (
     <section aria-label="Estado del catálogo" className="grid gap-4 rounded-2xl border bg-card p-4 shadow-sm md:grid-cols-[1fr_auto]">
@@ -17,9 +19,12 @@ export function CatalogStatus({ settings, url }: { settings: CatalogSettings; ur
           <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", settings.isPublic ? "bg-mint/15 text-[#0b7a66]" : "bg-muted text-ink-2")}>{label}</span>
         </p>
         <ShareLink url={url} storeName={settings.name} published={settings.isPublic} />
+        <p className="text-xs text-muted-foreground">
+          Enlace permanente: <span className="font-mono font-semibold text-ink-2">{permanent}</span>. No cambia aunque cambies el nombre de tu tienda; el QR lo usa.
+        </p>
         {!settings.isPublic && settings.planAllowsCatalog && <p className="text-sm text-muted-foreground">Está oculto: quien abra el enlace verá que no está disponible. Actívalo en Configuración.</p>}
       </div>
-      <CatalogQr url={url} slug={settings.slug} />
+      <CatalogQr url={permanent} slug={settings.slug} />
     </section>
   );
 }

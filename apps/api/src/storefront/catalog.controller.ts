@@ -9,7 +9,7 @@ import { CurrentTenant, TenantRoles, TenantScoped } from '../tenancy/decorators.
 import { CatalogProductsService } from './catalog-products.service.js';
 import { CatalogSettingsService } from './catalog-settings.service.js';
 import { ListRequestsQueryDto, UpdateRequestDto } from './dto/requests.dto.js';
-import { BulkPublishDto, CatalogProductsQueryDto, MediaKindParamDto, PublishProductDto, SlugQueryDto, UpdateCatalogSettingsDto } from './dto/settings.dto.js';
+import { BulkPublishDto, CatalogProductsQueryDto, MediaKindParamDto, PublishProductDto, UpdateCatalogSettingsDto } from './dto/settings.dto.js';
 import { OrderRequestsService } from './order-requests.service.js';
 
 const imageUpload = FileInterceptor('file', {
@@ -38,15 +38,9 @@ export class CatalogController {
 
   @Patch('settings')
   @TenantRoles('OWNER', 'ADMIN')
-  @ApiOperation({ summary: 'Actualizar nombre visible, dirección, colores, WhatsApp, mensaje, agotados y estado' })
+  @ApiOperation({ summary: 'Actualizar nombre visible (la dirección pública sigue al nombre), colores, WhatsApp, mensaje, agotados y estado' })
   updateSettings(@CurrentTenant() t: TenantContext, @Body() dto: UpdateCatalogSettingsDto) {
     return this.settings.update(t.tenantId, dto);
-  }
-
-  @Get('slug-availability')
-  @ApiOperation({ summary: 'Validar si una dirección pública está disponible' })
-  slug(@CurrentTenant() t: TenantContext, @Query() q: SlugQueryDto) {
-    return this.settings.slugAvailability(t.tenantId, q.slug);
   }
 
   @Post('media/:kind')

@@ -1,12 +1,15 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { AppError } from '../common/app-error.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { StoreDto, UpdateStoreDto } from './dto.js';
+import { slugForName, slugRace } from './store-address.js';
 
 export const STORE_SELECT = {
   id: true,
   name: true,
   slug: true,
+  publicCode: true,
   description: true,
   whatsapp: true,
   city: true,
@@ -34,11 +37,13 @@ export class StoresService {
 
   async updateCurrent(tenantId: string, dto: UpdateStoreDto): Promise<StoreDto> {
     const current = await this.getCurrent(tenantId);
+    const slug = await slugForName(this.prisma, dto.name, current);
     // updateMany with tenantId in the filter: the write itself is tenant-scoped.
     const result = await this.prisma.store.updateMany({
       where: { id: current.id, tenantId },
       data: {
         name: dto.name,
+        slug,
         description: dto.description ?? null,
         whatsapp: dto.whatsapp,
         city: dto.city,
@@ -46,6 +51,9 @@ export class StoresService {
         primaryColor: dto.primaryColor,
         ...(dto.timezone ? { timezone: dto.timezone } : {}),
       },
+    }).catch((error: unknown) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw slugRace();
+      throw error;
     });
     if (result.count === 0) throw new AppError(HttpStatus.NOT_FOUND, 'STORE_NOT_FOUND', 'No se encontró la tienda.');
     return this.getCurrent(tenantId);

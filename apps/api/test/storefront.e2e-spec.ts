@@ -25,6 +25,8 @@ describe('Online catalog (e2e)', () => {
       get: (url: string) => a.get(url).set('X-Forwarded-For', ip),
       post: (url: string) => a.post(url).set('X-Forwarded-For', ip),
       patch: (url: string) => a.patch(url).set('X-Forwarded-For', ip),
+      put: (url: string) => a.put(url).set('X-Forwarded-For', ip),
+      delete: (url: string) => a.delete(url).set('X-Forwarded-For', ip),
     };
   };
   type Agent = ReturnType<typeof agent>;
@@ -75,7 +77,7 @@ describe('Online catalog (e2e)', () => {
       slug = `mio-${run}`;
       const settings = (await s.a.get('/catalog/settings').expect(200)).body;
       expect(settings).toMatchObject({ status: 'PUBLISHED', outOfStock: 'SHOW', planAllowsCatalog: true, isPublic: true });
-      await s.a.patch('/catalog/settings').send({ slug, description: 'Moda femenina', secondaryColor: '#c98b98' }).expect(200);
+      await s.a.patch('/catalog/settings').send({ name: `Mío ${run}`, description: 'Moda femenina', secondaryColor: '#c98b98' }).expect(200);
       blusa = await product(s.a, {
         name: 'Blusa roja',
         salePrice: '85',
@@ -91,14 +93,29 @@ describe('Online catalog (e2e)', () => {
       await s.a.post('/catalog/products/bulk-update').send({ ids: [blusa.id, vestido.id, agotada.id], catalogPublished: true }).expect(201);
     });
 
-    it('validates and reserves slugs', async () => {
-      expect((await s.a.patch('/catalog/settings').send({ slug: 'dashboard' }).expect(400)).body.code).toBe('SLUG_INVALID');
-      expect((await s.a.patch('/catalog/settings').send({ slug: 'Mi Tienda' }).expect(400)).body.code).toBe('SLUG_INVALID');
+    it('builds the address from the name and gives a permanent code', async () => {
+      const settings = (await s.a.get('/catalog/settings').expect(200)).body;
+      expect(settings.slug).toBe(slug);
+      expect(settings.publicPath).toBe(`/${slug}`);
+      expect(settings.publicCode).toMatch(/^modaflow-[a-z0-9]{7}$/);
+      expect(settings.permanentPath).toBe(`/${settings.publicCode}`);
+      expect((await pub().get(`/public/stores/${settings.publicCode}`).expect(200)).body.slug).toBe(slug);
+      expect((await s.a.patch('/catalog/settings').send({ slug: 'otra-cosa' }).expect(400)).body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('moves the address when the name changes and keeps the permanent code', async () => {
       const other = await newStore('otra');
-      expect((await other.a.patch('/catalog/settings').send({ slug }).expect(409)).body.code).toBe('SLUG_TAKEN');
-      expect((await other.a.get(`/catalog/slug-availability?slug=${slug}`).expect(200)).body.available).toBe(false);
-      expect((await s.a.get(`/catalog/slug-availability?slug=${slug}`).expect(200)).body.available).toBe(true);
-      expect((await s.a.get('/catalog/settings').expect(200)).body.publicPath).toBe(`/${slug}`);
+      const before = (await other.a.get('/stores/current').expect(200)).body;
+      const fields = { description: before.description, whatsapp: before.whatsapp, city: before.city, address: before.address, primaryColor: before.primaryColor };
+      const taken = (await other.a.put('/stores/current').send({ ...fields, name: `Mio ${run}` }).expect(200)).body;
+      expect(taken.slug).toMatch(new RegExp(`^${slug}-[a-z0-9]{4}$`));
+      expect(taken.publicCode).toBe(before.publicCode);
+      const renamed = (await other.a.put('/stores/current').send({ ...fields, name: `Nueva Etapa ${run}` }).expect(200)).body;
+      expect(renamed.slug).toBe(`nueva-etapa-${run}`);
+      await pub().get(`/public/stores/${before.slug}`).expect(404);
+      expect((await pub().get(`/public/stores/${before.publicCode}`).expect(200)).body.slug).toBe(renamed.slug);
+      const same = (await other.a.put('/stores/current').send({ ...fields, name: `Nueva Etapa ${run}`, city: 'Sucre' }).expect(200)).body;
+      expect(same.slug).toBe(renamed.slug);
     });
 
     it('never gives a new store an address that collides with a system page', async () => {
@@ -236,6 +253,8 @@ describe('Online catalog (e2e)', () => {
     expect((await s.a.get('/catalog/settings').expect(200)).body).toMatchObject({ planAllowsCatalog: false, isPublic: false });
     expect((await s.a.patch(`/catalog/products/${p.id}`).send({ catalogPublished: false }).expect(403)).body.code).toBe('FEATURE_NOT_IN_PLAN');
     expect((await s.a.patch('/catalog/settings').send({ description: 'x' }).expect(403)).body.code).toBe('FEATURE_NOT_IN_PLAN');
+    await s.a.delete('/catalog/media/logo').expect(200);
+    expect((await s.a.delete('/catalog/media/cover').expect(403)).body.code).toBe('FEATURE_NOT_IN_PLAN');
 
     await setPlan(s.tenantId, 'pro');
     await agent().get(`/public/stores/${slug}/products/${p.slug}`).expect(200);

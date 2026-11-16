@@ -14,12 +14,14 @@ export const RESERVED_SLUGS = new Set([
   'vender', 'ventas', 'www',
 ]);
 
+export const PUBLIC_CODE_PATTERN = /^modaflow-[a-z0-9]{7}$/;
+
 export type SlugProblem = 'format' | 'length' | 'reserved';
 
 export function storeSlugProblem(slug: string): SlugProblem | null {
   if (slug.length < STORE_SLUG_MIN || slug.length > STORE_SLUG_MAX) return 'length';
   if (!STORE_SLUG_PATTERN.test(slug)) return 'format';
-  if (RESERVED_SLUGS.has(slug)) return 'reserved';
+  if (RESERVED_SLUGS.has(slug) || PUBLIC_CODE_PATTERN.test(slug)) return 'reserved';
   return null;
 }
 

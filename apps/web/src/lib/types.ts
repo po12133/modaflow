@@ -26,6 +26,7 @@ export interface Store {
   id: string;
   name: string;
   slug: string;
+  publicCode: string;
   description: string | null;
   whatsapp: string;
   city: string;

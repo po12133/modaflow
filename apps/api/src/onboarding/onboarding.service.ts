@@ -1,15 +1,13 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { SessionService } from '../auth/session.service.js';
 import { AppError } from '../common/app-error.js';
-import { generateToken } from '../common/crypto.js';
 import type { AuthContext } from '../common/request-context.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { TRIAL_PLAN_CODE } from '../plans/plan-catalog.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { STORE_SELECT } from '../stores/stores.service.js';
 import type { StoreFieldsDto } from '../stores/dto.js';
-import { storeSlugProblem } from '../storefront/storefront-rules.js';
-import { slugify } from '../stores/store-fields.js';
+import { freeStoreSlug, newPublicCode } from '../stores/store-address.js';
 import { addDays } from '../subscriptions/entitlement-rules.js';
 import { latestVersion } from '../billing/plan-versions.js';
 
@@ -55,7 +53,8 @@ export class OnboardingService {
         const store = await tx.store.create({
           data: {
             tenantId: tenant.id,
-            slug: await this.uniqueSlug(tx, dto.name),
+            slug: await freeStoreSlug(tx, dto.name),
+            publicCode: newPublicCode(),
             name: dto.name,
             description: dto.description ?? null,
             whatsapp: dto.whatsapp,
@@ -106,16 +105,5 @@ export class OnboardingService {
       }
       throw error;
     }
-  }
-
-  private async uniqueSlug(tx: Prisma.TransactionClient, name: string): Promise<string> {
-    const base = slugify(name);
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const candidate = attempt === 0 ? base : `${base.slice(0, 52)}-${generateToken(4).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6)}`;
-      if (storeSlugProblem(candidate)) continue;
-      const taken = await tx.store.findUnique({ where: { slug: candidate }, select: { id: true } });
-      if (!taken) return candidate;
-    }
-    return `${base.slice(0, 40)}-${Date.now().toString(36)}`;
   }
 }

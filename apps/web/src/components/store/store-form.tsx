@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ImageOff } from "lucide-react";
+import { Check } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, TextAreaField, TextField } from "@modaflow/ui/components/form";
 import type { FormState, Store } from "@/lib/types";
@@ -43,6 +43,7 @@ export function StoreForm({ action, store, submitLabel, pendingText }: StoreForm
         minLength={2}
         maxLength={80}
         placeholder="Ej. MioShop"
+        hint="Tu enlace del catálogo se forma con el nombre."
         state={state}
       />
       <TextAreaField
@@ -154,16 +155,6 @@ export function StoreForm({ action, store, submitLabel, pendingText }: StoreForm
           </div>
         )}
       </Field>
-
-      <div className="flex items-center gap-3 rounded-xl border border-dashed p-3 text-sm text-muted-foreground">
-        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted">
-          <ImageOff className="size-5" aria-hidden="true" />
-        </span>
-        <p>
-          <span className="font-semibold text-ink-2">Logotipo:</span> podrás subirlo cuando habilitemos el
-          almacenamiento de imágenes.
-        </p>
-      </div>
 
       <SubmitButton pending={pending} pendingText={pendingText} className="w-full sm:w-auto sm:justify-self-end">
         {submitLabel}

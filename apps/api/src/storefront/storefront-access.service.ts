@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { AppError } from '../common/app-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { PUBLIC_CODE_PATTERN } from './storefront-rules.js';
 import { contractedRules, effectiveStatus, isFeatureEnabled } from '../subscriptions/entitlement-rules.js';
 import { EntitlementsService } from '../subscriptions/entitlements.service.js';
 
@@ -39,7 +40,8 @@ export class StorefrontAccessService {
   }
 
   async resolvePublic(slug: string): Promise<PublicStoreContext> {
-    const store = await this.prisma.store.findUnique({ where: { slug }, include: { catalogSettings: true } });
+    const where = PUBLIC_CODE_PATTERN.test(slug) ? { publicCode: slug } : { slug };
+    const store = await this.prisma.store.findUnique({ where, include: { catalogSettings: true } });
     const settings = store?.catalogSettings;
     if (!store || settings?.status === 'HIDDEN' || !(await this.isOnline(store.tenantId))) {
       throw new AppError(HttpStatus.NOT_FOUND, 'CATALOG_UNAVAILABLE', 'Este catálogo no está disponible.');

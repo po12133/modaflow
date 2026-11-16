@@ -14,6 +14,8 @@ describe('storefront rules', () => {
     expect(storeSlugProblem('tienda')).toBe('reserved');
     expect(storeSlugProblem('login')).toBe('reserved');
     expect(storeSlugProblem('ventas')).toBe('reserved');
+    expect(storeSlugProblem('modaflow-ab3cd7e')).toBe('reserved');
+    expect(storeSlugProblem('modaflow-store')).toBeNull();
   });
 
   it('builds product slugs from name and SKU', () => {

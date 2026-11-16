@@ -301,7 +301,7 @@ Web: `src/types/reports.ts` (tipos), `src/config/reports.ts` (declaraciones), `s
 
 ## Arquitectura (Etapa 5: catálogo online, pedidos por WhatsApp y QR)
 
-**Catálogo público** en `/{slug}`, directo en el dominio (los enlaces antiguos `/tienda/{slug}` redirigen; mayúsculas, espacios y tildes escritos a mano se corrigen solos; los nombres de páginas del sistema están reservados) (sin registro): portada, logotipo, descripción, ciudad, botón de WhatsApp,
+**Catálogo público** en `/{slug}`, directo en el dominio (los enlaces antiguos `/tienda/{slug}` redirigen; mayúsculas, espacios y tildes escritos a mano se corrigen solos; los nombres de páginas del sistema están reservados). La dirección se forma con el nombre de la tienda y cambia al renombrarla (si ya está ocupada se agrega un sufijo); además cada tienda tiene un enlace permanente `/modaflow-xxxxxxx` que nunca cambia, redirige a la dirección actual y es el que lleva el QR. El logotipo se sube desde Configuración de la tienda en cualquier plan (sin registro): portada, logotipo, descripción, ciudad, botón de WhatsApp,
 búsqueda (nombre, categoría, color, talla, etiquetas), filtros (categoría, talla, color, rango de precio,
 disponibilidad), orden (recientes, precio, nombre) y paginación en el backend (24 por página). Detalle en
 `/{slug}/producto/{productSlug}` con galería (miniaturas y vista ampliada), variantes disponibles y cantidad

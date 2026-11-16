@@ -80,7 +80,7 @@ export class AdminTenantsService {
     const t = await this.prisma.tenant.findUnique({
       where: { id },
       include: {
-        stores: { orderBy: { createdAt: 'asc' }, select: { id: true, name: true, slug: true, city: true, whatsapp: true, createdAt: true } },
+        stores: { orderBy: { createdAt: 'asc' }, select: { id: true, name: true, slug: true, publicCode: true, city: true, whatsapp: true, createdAt: true } },
         memberships: { orderBy: { createdAt: 'asc' }, select: { role: true, createdAt: true, user: { select: { id: true, name: true, email: true, status: true, lastLoginAt: true } } } },
         subscription: { include: { plan: { select: { code: true, name: true, isTrial: true } }, planVersion: { select: { version: true, priceCents: true } } } },
         subscriptionHistory: { orderBy: { createdAt: 'desc' }, take: 30, include: { actor: { select: { name: true } }, actorStaff: { select: { name: true } } } },

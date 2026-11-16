@@ -4,12 +4,10 @@ import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional
 import { Trim, TrimToNull } from '../../common/validation.js';
 import { HEX_COLOR, NormalizeWhatsapp, UppercaseHex, WHATSAPP_E164, WHATSAPP_MESSAGE } from '../../stores/store-fields.js';
 
-const toLower = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
 const toBool = ({ value }: { value: unknown }) => (value === 'true' ? true : value === 'false' ? false : value);
 
 export class UpdateCatalogSettingsDto {
   @ApiPropertyOptional() @IsOptional() @Trim() @IsString() @Length(2, 80) name?: string;
-  @ApiPropertyOptional({ example: 'mioshop' }) @IsOptional() @Transform(toLower) @IsString() @Length(3, 60) slug?: string;
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @TrimToNull() @IsString() @MaxLength(280) description?: string | null;
   @ApiPropertyOptional() @IsOptional() @NormalizeWhatsapp() @Matches(WHATSAPP_E164, { message: WHATSAPP_MESSAGE }) whatsapp?: string;
   @ApiPropertyOptional() @IsOptional() @UppercaseHex() @Matches(HEX_COLOR) primaryColor?: string;
@@ -17,10 +15,6 @@ export class UpdateCatalogSettingsDto {
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @TrimToNull() @IsString() @MaxLength(300) welcomeMessage?: string | null;
   @ApiPropertyOptional({ enum: ['SHOW', 'HIDE'] }) @IsOptional() @IsIn(['SHOW', 'HIDE']) outOfStock?: 'SHOW' | 'HIDE';
   @ApiPropertyOptional({ enum: ['PUBLISHED', 'HIDDEN'] }) @IsOptional() @IsIn(['PUBLISHED', 'HIDDEN']) status?: 'PUBLISHED' | 'HIDDEN';
-}
-
-export class SlugQueryDto {
-  @ApiPropertyOptional() @Transform(toLower) @IsString() @MaxLength(80) slug!: string;
 }
 
 export class MediaKindParamDto {

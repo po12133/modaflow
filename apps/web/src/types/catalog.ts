@@ -7,6 +7,7 @@ export type RequestStatus = "CREATED" | "WHATSAPP_OPENED" | "ATTENDED" | "CANCEL
 export interface CatalogSettings {
   name: string;
   slug: string;
+  publicCode: string;
   description: string | null;
   whatsapp: string;
   city: string;
@@ -18,6 +19,7 @@ export interface CatalogSettings {
   logoUrl: string | null;
   coverUrl: string | null;
   publicPath: string;
+  permanentPath: string;
   planAllowsCatalog: boolean;
   isPublic: boolean;
 }

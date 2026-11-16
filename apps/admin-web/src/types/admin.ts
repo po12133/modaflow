@@ -62,7 +62,7 @@ export interface AdminTenantDetail {
   id: string;
   name: string;
   createdAt: string;
-  stores: { id: string; name: string; slug: string; city: string; whatsapp: string; createdAt: string }[];
+  stores: { id: string; name: string; slug: string; publicCode: string; city: string; whatsapp: string; createdAt: string }[];
   memberships: { role: string; createdAt: string; user: { id: string; name: string; email: string; status: string; lastLoginAt: string | null } }[];
   subscription: { id: string; status: SubscriptionStatus; effectiveStatus: SubscriptionStatus; startedAt: string; currentPeriodEnd: string; plan: { code: string; name: string; isTrial: boolean }; planVersion: { version: number; priceCents: number } | null } | null;
   subscriptionHistory: { id: string; action: string; fromStatus: string | null; toStatus: string | null; reason: string | null; createdAt: string; actor: { name: string } | null; actorStaff: { name: string } | null }[];

@@ -160,8 +160,10 @@ model Store {
   id           String   @id @default(uuid()) @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid
   name         String   @db.VarChar(80)
-  /// Public identifier for the future online catalog.
+  /// Public address of the catalog; follows the store name.
   slug         String   @unique @db.VarChar(80)
+  /// Permanent public code (modaflow-xxxxxxx): never changes, always leads to the catalog.
+  publicCode   String   @unique @map("public_code") @db.VarChar(20)
   description  String?  @db.VarChar(280)
   /// E.164 format, e.g. +59171234567.
   whatsapp     String   @db.VarChar(20)

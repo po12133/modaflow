@@ -14,7 +14,6 @@ const nullable = (max: number) => z.string().trim().max(max).transform((v) => v 
 
 const settingsSchema = z.object({
   name: z.string().trim().min(2, { error: "Escribe el nombre de la tienda." }).max(80),
-  slug: z.string().trim().toLowerCase().min(3, { error: "Mínimo 3 caracteres." }).max(60),
   description: nullable(280),
   whatsapp: z.string().trim().min(7, { error: "Escribe el WhatsApp de la tienda." }).max(20),
   primaryColor: z.string().regex(HEX),
@@ -44,19 +43,10 @@ export async function updateCatalogSettingsAction(_prev: FormState, formData: Fo
     await api("/catalog/settings", { method: "PATCH", body: parsed.data });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) redirect("/login");
-    return apiFailure(error, values, { SLUG_TAKEN: "slug", SLUG_INVALID: "slug" });
+    return apiFailure(error, values, { SLUG_TAKEN: "name" });
   }
   refresh();
   return { ok: true, message: "Catálogo actualizado." };
-}
-
-export async function checkSlugAction(slug: string): Promise<{ available: boolean; message: string | null }> {
-  const clean = slug.trim().toLowerCase().slice(0, 80);
-  try {
-    return await api(`/catalog/slug-availability?slug=${encodeURIComponent(clean)}`);
-  } catch {
-    return { available: false, message: "No se pudo comprobar la dirección." };
-  }
 }
 
 export async function setProductPublishedAction(id: string, catalogPublished: boolean): Promise<ActionResult<null>> {

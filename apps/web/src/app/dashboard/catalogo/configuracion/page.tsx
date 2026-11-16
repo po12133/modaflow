@@ -7,14 +7,13 @@ import { SettingsForm } from "@/components/catalog-admin/settings-form";
 import { PageHeader } from "@/components/dashboard/common";
 import { getDashboardContext } from "@/lib/dal";
 import { getCatalogSettings } from "@/services/catalog";
-import { siteOrigin } from "@/services/site";
 
 export const metadata: Metadata = { title: "Configuración del catálogo" };
 
 export const instant = false;
 
 export default async function CatalogSettingsPage() {
-  const [{ me, subscription }, settings, origin] = await Promise.all([getDashboardContext(), getCatalogSettings(), siteOrigin()]);
+  const [{ me, subscription }, settings] = await Promise.all([getDashboardContext(), getCatalogSettings()]);
   const canEdit = settings.planAllowsCatalog && me.membership.role !== "SELLER";
   return (
     <div className="grid gap-5">
@@ -25,7 +24,7 @@ export default async function CatalogSettingsPage() {
       {!settings.planAllowsCatalog && <CatalogUpsell operational={subscription.isOperational} />}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <section className="rounded-2xl border bg-card p-4 shadow-sm">
-          <SettingsForm settings={settings} origin={origin} disabled={!canEdit} />
+          <SettingsForm settings={settings} disabled={!canEdit} />
         </section>
         {canEdit && (
           <section aria-label="Imágenes" className="grid gap-5 rounded-2xl border bg-card p-4 shadow-sm">

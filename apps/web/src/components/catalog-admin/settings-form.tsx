@@ -5,7 +5,6 @@ import { updateCatalogSettingsAction } from "@/actions/catalog";
 import { Field, FormMessage, SubmitButton, TextAreaField, TextField } from "@modaflow/ui/components/form";
 import type { FormState } from "@/lib/types";
 import type { CatalogSettings } from "@/types/catalog";
-import { SlugField } from "./slug-field";
 
 const select = "h-11 w-full rounded-xl border border-input bg-card px-3 text-base md:text-sm";
 
@@ -17,7 +16,7 @@ function ColorInput({ name, label, value, state }: { name: string; label: string
   );
 }
 
-export function SettingsForm({ settings, origin, disabled }: { settings: CatalogSettings; origin: string; disabled: boolean }) {
+export function SettingsForm({ settings, disabled }: { settings: CatalogSettings; disabled: boolean }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateCatalogSettingsAction, {});
   const v = (key: keyof CatalogSettings) => state.values?.[key] ?? String(settings[key] ?? "");
 
@@ -25,8 +24,7 @@ export function SettingsForm({ settings, origin, disabled }: { settings: Catalog
     <form action={action} className="grid gap-4">
       <FormMessage state={state} />
       <fieldset disabled={disabled} className="grid gap-4 disabled:opacity-60">
-        <TextField label="Nombre visible" name="name" defaultValue={v("name")} maxLength={80} required state={state} />
-        <SlugField defaultValue={settings.slug} origin={origin} state={state} />
+        <TextField label="Nombre visible" name="name" defaultValue={v("name")} maxLength={80} required state={state} hint="Tu enlace cambia con el nombre. El enlace permanente y el QR siguen funcionando." />
         <TextAreaField label="Descripción" name="description" optional defaultValue={v("description")} maxLength={280} state={state} />
         <TextField label="WhatsApp de la tienda" name="whatsapp" defaultValue={v("whatsapp")} inputMode="tel" state={state} hint="Aquí llegarán los pedidos del catálogo." />
         <div className="grid grid-cols-2 gap-3">

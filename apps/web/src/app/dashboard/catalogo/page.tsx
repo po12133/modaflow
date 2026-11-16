@@ -15,7 +15,7 @@ export default async function CatalogPage() {
   return (
     <div className="grid gap-5">
       <PageHeader title="Catálogo online" description="Muestra tus prendas en internet y recibe consultas por WhatsApp." />
-      {settings.planAllowsCatalog ? <CatalogStatus settings={settings} url={`${origin}${settings.publicPath}`} /> : <CatalogUpsell operational={subscription.isOperational} />}
+      {settings.planAllowsCatalog ? <CatalogStatus settings={settings} origin={origin} /> : <CatalogUpsell operational={subscription.isOperational} />}
       <CatalogStats summary={summary} />
       <CatalogLinks pending={summary.pendingRequests} />
     </div>
